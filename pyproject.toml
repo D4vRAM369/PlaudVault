@@ -18,8 +18,15 @@ dependencies = [
     "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+gui = ["fastapi>=0.110", "uvicorn>=0.29", "markdown-it-py>=3.0"]
+test = ["httpx>=0.27"]
+
 [project.scripts]
 plaudvault = "plaudvault.__main__:main"
 
 [tool.setuptools]
 packages = ["plaudvault"]
+
+[tool.setuptools.package-data]
+plaudvault = ["gui_static/*"]   # HTML/JS/CSS no son .py: sin esto no se instalan

@@ -5,3 +5,9 @@ cryptography>=42.0.0
 argon2-cffi>=23.1.0
 PyYAML>=6.0
 requests>=2.31.0
+
+# GUI web local (python -m plaudvault.gui)
+fastapi>=0.110
+uvicorn>=0.29
+markdown-it-py>=3.0
+httpx>=0.27  # solo para tests/test_gui.py (TestClient)

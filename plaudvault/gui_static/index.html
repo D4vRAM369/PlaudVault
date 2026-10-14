@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PlaudVault</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <!-- Sin scripts inline: la CSP solo permite /static/app.js -->
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <aside>
+    <form id="search-form" role="search">
+      <input id="q" type="search" placeholder="Buscar en todo…" autocomplete="off">
+    </form>
+    <div id="lock-bar"></div>
+    <nav id="list" aria-label="Grabaciones"></nav>
+  </aside>
+  <main>
+    <section id="welcome"><h1>PlaudVault</h1><p>Elige una grabación o busca.</p></section>
+    <section id="results" hidden></section>
+    <section id="rec" hidden>
+      <h1 id="rec-title"></h1>
+      <div id="audio-box"></div>
+      <div id="tabs" role="tablist"></div>
+      <article id="doc"></article>
+    </section>
+  </main>
+</body>
+</html>
