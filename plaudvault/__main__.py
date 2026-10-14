@@ -20,6 +20,7 @@ import argparse
 import getpass
 import logging
 import shutil
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -142,11 +143,24 @@ def cmd_search(cfg, args) -> None:
     db.close()
 
 
-def cmd_list(cfg, _args) -> None:
+def cmd_list(cfg, args) -> None:
+    # Solo lectura (sin init_schema): `list` debe poder usarse con un sync en
+    # marcha sin competir por el bloqueo de escritura de SQLite.
     db = VaultDB(cfg.paths.db)
-    for r in db.list_recordings():
-        print(f"#{r['id']:4d}  {r['ingested_at'][:16]}  "
-              f"[{r['source_type']:5s}]  {r['filename']}")
+    try:
+        rows = (db.list_categories() if args.categories
+                else db.list_recordings(args.limit, args.category))
+    except sqlite3.OperationalError:
+        print("Aún no hay categorías: ejecuta `reclassify` tras el sync.", file=sys.stderr)
+        sys.exit(1)
+    if args.categories:
+        for r in rows:
+            print(f"{r['n']:5d}  {r['category']}")
+    else:
+        for r in rows:
+            cat = f"  ({r['category']})" if "category" in r.keys() and r["category"] else ""
+            print(f"#{r['id']:4d}  {r['ingested_at'][:16]}  "
+                  f"[{r['source_type']:5s}]  {r['filename']}{cat}")
     db.close()
 
 
@@ -190,6 +204,33 @@ def cmd_sync(cfg, args) -> None:
     print(f"   Carpetas en: {cfg.paths.archive}")
     if failed:
         sys.exit(2)
+
+
+def cmd_reclassify(cfg, args) -> None:
+    from .plaud_client import PlaudClient, PlaudError
+    from .reclassify import SyncInProgress, apply, assert_no_sync_running, plan
+
+    try:
+        assert_no_sync_running(cfg.paths.archive)
+        client = PlaudClient.from_env()
+        db = VaultDB(cfg.paths.db)
+        db.init_schema()
+        moves = plan(cfg.paths.archive, db, client)
+    except (SyncInProgress, PlaudError) as exc:
+        print(f"❌ {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    pending = [m for m in moves if m.dst != m.src]
+    if args.dry_run:
+        for m in pending:
+            print(f"{m.src.relative_to(cfg.paths.archive)}  →  "
+                  f"{m.dst.relative_to(cfg.paths.archive)}")
+        print(f"\n🔎 Simulación: se moverían {len(pending)} de {len(moves)}. "
+              "Nada ha cambiado.")
+    else:
+        moved, same = apply(moves, db)
+        print(f"✅ Movidas: {moved} · ya en su sitio: {same}")
+    db.close()
 
 
 def cmd_decrypt(cfg, args) -> None:
@@ -237,7 +278,16 @@ def main() -> None:
     p_show = sub.add_parser("show", help="muestra la transcripción completa de un id")
     p_show.add_argument("id", type=int)
 
-    sub.add_parser("list", help="últimas grabaciones")
+    p_list = sub.add_parser("list", help="últimas grabaciones")
+    p_list.add_argument("-n", "--limit", type=int, default=20)
+    p_list.add_argument("--category", help="solo las de esta carpeta de Plaud")
+    p_list.add_argument("--categories", action="store_true",
+                        help="lista las carpetas y cuántas grabaciones tiene cada una")
+
+    p_rec = sub.add_parser("reclassify",
+                           help="reordena archive/ en <Carpeta Plaud>/MM-YY/ (tras un sync)")
+    p_rec.add_argument("--dry-run", action="store_true",
+                       help="muestra qué se movería sin mover nada")
 
     p_dec = sub.add_parser("decrypt", help="recupera el audio original de un id")
     p_dec.add_argument("id", type=int)
@@ -262,6 +312,7 @@ def main() -> None:
         "list": cmd_list,
         "decrypt": cmd_decrypt,
         "sync": cmd_sync,
+        "reclassify": cmd_reclassify,
     }[args.command](cfg, args)
 
 

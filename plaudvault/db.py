@@ -95,6 +95,9 @@ class VaultDB:
         # Migración: vaults creados antes del sync no tienen la columna.
         # CREATE TABLE IF NOT EXISTS no altera tablas ya existentes.
         cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(recordings)")}
+        if "category" not in cols:
+            # Carpeta de Plaud ("Sin carpeta" si no tiene). La rellena `reclassify`.
+            self.conn.execute("ALTER TABLE recordings ADD COLUMN category TEXT")
         if "plaud_file_id" not in cols:
             # SQLite no permite ADD COLUMN ... UNIQUE: la unicidad va en un índice.
             self.conn.execute("ALTER TABLE recordings ADD COLUMN plaud_file_id TEXT")
@@ -188,12 +191,36 @@ class VaultDB:
             (recording_id,),
         ).fetchone()
 
-    def list_recordings(self, limit: int = 20) -> list[sqlite3.Row]:
+    def list_recordings(self, limit: int = 20,
+                        category: str | None = None) -> list[sqlite3.Row]:
+        # SELECT *: en un vault aún sin migrar no existe `category` y la fila
+        # simplemente no la trae (sin filtro, no falla).
+        sql = "SELECT * FROM recordings"
+        args: tuple = ()
+        if category is not None:
+            sql += " WHERE category = ?"
+            args = (category,)
+        return self.conn.execute(sql + " ORDER BY id DESC LIMIT ?", (*args, limit)).fetchall()
+
+    def list_categories(self) -> list[sqlite3.Row]:
         return self.conn.execute(
-            "SELECT id, filename, source_type, ingested_at FROM recordings "
-            "ORDER BY id DESC LIMIT ?",
-            (limit,),
+            "SELECT category, COUNT(*) AS n FROM recordings "
+            "WHERE category IS NOT NULL GROUP BY category ORDER BY category"
         ).fetchall()
+
+    def plaud_recordings(self) -> list[sqlite3.Row]:
+        return self.conn.execute(
+            "SELECT id, plaud_file_id, encrypted_path, category FROM recordings "
+            "WHERE plaud_file_id IS NOT NULL"
+        ).fetchall()
+
+    def set_location(self, recording_id: int, encrypted_path: str | None,
+                     category: str) -> None:
+        self.conn.execute(
+            "UPDATE recordings SET encrypted_path = ?, category = ? WHERE id = ?",
+            (encrypted_path, category, recording_id),
+        )
+        self.conn.commit()
 
     def close(self) -> None:
         self.conn.close()

@@ -9,6 +9,7 @@ docs/
 # Sondas locales de la API de Plaud (pueden contener estructura de tu cuenta)
 scratch_*.py
 probe_out.json
+probe_tags.json
 
 # Datos personales y estado de herramientas de IA (nunca publicar)
 *.mp3

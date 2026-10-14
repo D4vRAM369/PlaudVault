@@ -54,6 +54,22 @@ Necesita tu token de sesión de web.plaud.ai en la variable `PLAUD_TOKEN`
 read -rs PLAUD_TOKEN && export PLAUD_TOKEN   # no queda en el historial
 ```
 
+### Reordenar por carpetas de Plaud
+
+Las carpetas que tienes en Plaud se guardan como categoría de cada grabación.
+Tras un `sync`, `reclassify` reorganiza el archivo:
+
+```bash
+plaudvault reclassify --dry-run   # muestra qué se movería
+plaudvault reclassify             # archive/<Carpeta>/MM-YY/<grabación>/
+plaudvault list --categories      # carpetas y nº de grabaciones
+plaudvault list --category Ideas
+```
+
+Localiza cada grabación por su marca `.plaud_id` (no por la ruta), actualiza la
+ruta del audio en la base de datos y se puede repetir sin riesgo. No se ejecuta
+si detecta un `sync` en curso.
+
 > ⚠️ Usa la API web **no oficial** de Plaud: puede cambiar sin aviso. Todo el
 > acceso está aislado en `plaudvault/plaud_client.py`.
 
@@ -74,7 +90,7 @@ Telegram (opcional): pon `telegram.enabled: true` en config.yaml y exporta
 
 ```
 plaudvault/
-├── __main__.py      # CLI (init, run, ingest, search, show, list, decrypt, sync)
+├── __main__.py      # CLI (init, run, ingest, search, show, list, decrypt, sync, reclassify)
 ├── config.py        # carga de config.yaml
 ├── db.py            # SQLite + FTS5 + triggers
 ├── crypto.py        # Argon2id + AES-256-GCM
@@ -82,6 +98,7 @@ plaudvault/
 ├── pipeline.py      # orquestación de la ingesta
 ├── plaud_client.py  # API web de Plaud (región, paginación, S3)
 ├── sync.py          # importación de la nube a carpetas por mes
+├── reclassify.py    # reordena archive/ por carpetas de Plaud
 ├── notifier.py      # Telegram (HTTP directo)
 └── watcher.py       # watchdog sobre inbox/
 tests/               # python tests/test_*.py (sin red ni credenciales)

@@ -101,6 +101,11 @@ class PlaudClient:
                 return
             skip += PAGE_SIZE
 
+    def folders(self) -> dict[str, str]:
+        """{id de carpeta: nombre}. Verificado: GET /filetag/ (sonda 2026-10-14)."""
+        tags = self._get("/filetag/").get("data_filetag_list") or []
+        return {str(t["id"]): t.get("name") or str(t["id"]) for t in tags}
+
     def file_detail(self, file_id: str) -> dict:
         return self._get(f"/file/detail/{file_id}").get("data") or {}
 
