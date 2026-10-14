@@ -132,6 +132,7 @@ class VaultDB:
         duration_secs: float | None = None,
         encrypted_path: str | None = None,
         plaud_file_id: str | None = None,
+        commit: bool = True,
     ) -> int:
         cur = self.conn.execute(
             """INSERT INTO recordings
@@ -141,18 +142,21 @@ class VaultDB:
             (filename, sha256, source_type, duration_secs, encrypted_path, _now(),
              plaud_file_id),
         )
-        self.conn.commit()
+        if commit:
+            self.conn.commit()
         return cur.lastrowid
 
     def add_transcript(
-        self, recording_id: int, content: str, language: str, model: str
+        self, recording_id: int, content: str, language: str, model: str,
+        commit: bool = True,
     ) -> int:
         cur = self.conn.execute(
             """INSERT INTO transcripts (recording_id, content, language, model, created_at)
                VALUES (?, ?, ?, ?, ?)""",
             (recording_id, content, language, model, _now()),
         )
-        self.conn.commit()
+        if commit:
+            self.conn.commit()
         return cur.lastrowid
 
     def set_encrypted_path(self, recording_id: int, encrypted_path: str) -> None:

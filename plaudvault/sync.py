@@ -175,17 +175,23 @@ class PlaudSync:
             shutil.rmtree(final)
         work.rename(final)
 
-        rec_id = self.db.add_recording(
-            filename=(f.get("filename") or fid) + (".mp3" if audio_path else ""),
-            sha256=f"plaud:{fid}",  # ponytail: id de Plaud como huella; no
-            # detecta el mismo mp3 ingerido también por inbox/
-            source_type="audio" if audio_path else "text",
-            duration_secs=(f.get("duration") or 0) / 1000 or None,
-            encrypted_path=str(final / audio_path) if audio_path else None,
-            plaud_file_id=fid,
-        )
-        for model, text in texts:
-            self.db.add_transcript(rec_id, text, self.cfg.language, model)
+        # Una sola transacción: la grabación entra en la DB con todos sus textos
+        # o no entra. Si fallara a medias (p. ej. "database is locked"), `with`
+        # hace rollback; sin él, un commit posterior guardaría la grabación sin
+        # transcripts y has_plaud_file() impediría reimportarla jamás.
+        with self.db.conn:
+            rec_id = self.db.add_recording(
+                filename=(f.get("filename") or fid) + (".mp3" if audio_path else ""),
+                sha256=f"plaud:{fid}",  # ponytail: id de Plaud como huella; no
+                # detecta el mismo mp3 ingerido también por inbox/
+                source_type="audio" if audio_path else "text",
+                duration_secs=(f.get("duration") or 0) / 1000 or None,
+                encrypted_path=str(final / audio_path) if audio_path else None,
+                plaud_file_id=fid,
+                commit=False,
+            )
+            for model, text in texts:
+                self.db.add_transcript(rec_id, text, self.cfg.language, model, commit=False)
         return rec_id
 
     def _write_contents(self, detail: dict, work: Path) -> list[tuple[str, str]]:
