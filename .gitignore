@@ -1,0 +1,32 @@
+config.yaml
+.env
+*.log
+__pycache__/
+*.pyc
+.venv/
+docs/
+
+# Sondas locales de la API de Plaud (pueden contener estructura de tu cuenta)
+scratch_*.py
+probe_out.json
+
+# Datos personales y estado de herramientas de IA (nunca publicar)
+*.mp3
+*.wav
+*.m4a
+*.pv
+prueba.txt
+.omx/
+.omc/
+.codex/
+.agents/
+.claude/
+
+# Artefactos de build de Python
+build/
+dist/
+*.egg-info/
+
+# Instrucciones locales para IA y doc PBL (no publicar)
+CLAUDE.md
+COMO_FUNCIONA.md

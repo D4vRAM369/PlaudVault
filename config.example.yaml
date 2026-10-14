@@ -1,0 +1,37 @@
+# PlaudVault — configuración
+# Copia este fichero a config.yaml y ajusta las rutas.
+# config.yaml está en .gitignore: nunca se commitea.
+
+vault:
+  base_path: "~/PlaudVault"
+  db_path: "~/PlaudVault/vault.db"
+  inbox_path: "~/PlaudVault/inbox"      # aquí dejas audios/transcripts nuevos
+  archive_path: "~/PlaudVault/archive"  # aquí van los audios cifrados (.pv)
+
+transcription:
+  model: "small"        # base | small | medium — en CPU, small es el óptimo
+  language: "es"
+  device: "cpu"
+  compute_type: "int8"  # cuantización óptima para CPU
+
+crypto:
+  enabled: true
+  # La clave maestra se pide en runtime y NUNCA se guarda en disco.
+  # El salt de Argon2id se genera en `init` y vive en vault.salt.
+
+telegram:
+  enabled: false
+  bot_token_env: "TELEGRAM_BOT_TOKEN"   # nombre de la variable de entorno
+  chat_id_env: "TELEGRAM_CHAT_ID"
+
+# Fase 1.5 — enriquecimiento LLM con plantillas CoSTAR (aún no activo en MVP)
+llm:
+  enabled: false
+  provider: "anthropic"  # anthropic | ollama
+  model: "claude-haiku-4-5-20251001"
+  api_key_env: "ANTHROPIC_API_KEY"
+  ollama_url: "http://localhost:11434"
+
+logging:
+  level: "INFO"
+  file: "~/PlaudVault/plaudvault.log"

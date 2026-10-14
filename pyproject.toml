@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plaudvault"
+version = "0.2.0"
+description = "Bóveda local cifrada para grabaciones de voz: importa audio, transcripciones, notas e infografías de Plaud"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    "faster-whisper>=1.0.0",
+    "watchdog>=4.0.0",
+    "cryptography>=42.0.0",
+    "argon2-cffi>=23.1.0",
+    "PyYAML>=6.0",
+    "requests>=2.31.0",
+]
+
+[project.scripts]
+plaudvault = "plaudvault.__main__:main"
+
+[tool.setuptools]
+packages = ["plaudvault"]

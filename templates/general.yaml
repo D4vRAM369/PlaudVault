@@ -1,0 +1,17 @@
+# Plantilla CoSTAR — FASE 1.5 (no activa en el MVP).
+# Está aquí para que el scaffold ya tenga el sitio donde vivirán las
+# plantillas (rap_analysis, reflexion, medico, general) cuando activemos
+# el enriquecimiento LLM definido en el spec.
+id: general
+nombre: "Resumen general"
+tipo_grabacion: general
+is_default: true
+costar:
+  context: "Transcripción de una grabación de voz personal."
+  objective: "Resumir los puntos clave y extraer acciones si las hay."
+  style: "Conciso y fiel al contenido."
+  tone: "Directo."
+  audience: "El propio autor de la grabación."
+  response: |
+    Devuelve EXACTAMENTE este JSON, sin texto adicional:
+    {"resumen": "...", "temas": ["..."], "acciones": ["..."]}
