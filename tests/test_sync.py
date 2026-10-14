@@ -169,6 +169,19 @@ def test_no_crypto_keeps_mp3():
         db.close()
 
 
+def test_token_extraction():
+    from plaudvault.plaud_client import PlaudError, extract_jwt
+    fake = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJhLWZhbHNh_-"
+    for pasted in (fake, f"bearer {fake}", f'"bearer {fake}"', f"authorization: bearer {fake}\n",
+                   f"  Authorization: Bearer {fake}  "):
+        assert extract_jwt(pasted) == fake, pasted
+    try:
+        extract_jwt("authorization: bearer ")
+        raise AssertionError("debió fallar")
+    except PlaudError as exc:
+        assert "len=" in str(exc) and "bearer" not in str(exc).split("(")[0]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

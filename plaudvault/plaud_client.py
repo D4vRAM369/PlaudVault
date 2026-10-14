@@ -13,6 +13,7 @@ import gzip
 import json
 import logging
 import os
+import re
 
 import requests
 
@@ -26,12 +27,27 @@ class PlaudError(Exception):
     """Error de la API de Plaud (token inválido, respuesta inesperada…)."""
 
 
+JWT_RE = re.compile(r"eyJ[\w-]+\.[\w-]+\.[\w-]+")
+
+
+def extract_jwt(pasted: str) -> str:
+    """Saca el JWT de lo que se haya pegado: valor solo, con "bearer ", con
+    comillas o con la línea entera "authorization: bearer …" de DevTools.
+    Si no hay JWT, el error describe la FORMA del texto, nunca su contenido."""
+    m = JWT_RE.search(pasted)
+    if m:
+        return m.group(0)
+    raise PlaudError(
+        f"PLAUD_TOKEN no contiene un JWT (len={len(pasted)}, "
+        f"empieza_eyJ={pasted.strip().startswith('eyJ')}, "
+        f"puntos={pasted.count('.')}). Cópialo de DevTools → Network → "
+        "Request Headers → authorization → clic derecho → Copy value."
+    )
+
+
 class PlaudClient:
     def __init__(self, token: str, api: str = DEFAULT_API):
-        # DevTools a veces copia el valor con comillas o con "bearer " delante.
-        raw = token.strip().strip('"').strip()
-        if raw.lower().startswith("bearer "):
-            raw = raw[7:].strip()
+        raw = extract_jwt(token)
         self.api = api.rstrip("/")
         self.session = requests.Session()
         self.session.headers.update({
