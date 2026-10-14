@@ -86,6 +86,16 @@ Telegram (opcional): pon `telegram.enabled: true` en config.yaml y exporta
   activo en tu sesión.
 - Sin passphrase no hay recuperación posible. No hay puerta trasera.
 
+### Copias de seguridad
+
+`vault.db` está en modo **WAL**: junto a ella verás `vault.db-wal` y
+`vault.db-shm`. Forman parte de la base de datos, **no los borres**. Para
+copiarla sin cerrar nada, usa la API de backup de SQLite:
+
+```bash
+python -c "import sqlite3; sqlite3.connect('vault.db').backup(sqlite3.connect('copia.db'))"
+```
+
 ## Estructura
 
 ```

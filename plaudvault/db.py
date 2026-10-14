@@ -91,6 +91,9 @@ class VaultDB:
         self.conn.execute("PRAGMA foreign_keys = ON")
 
     def init_schema(self) -> None:
+        # WAL: lectores (la GUI) y escritor (sync) no se bloquean entre sí.
+        # Es persistente en el fichero; en una DB que ya es WAL no hace nada.
+        self.conn.execute("PRAGMA journal_mode = WAL")
         self.conn.executescript(SCHEMA)
         # Migración: vaults creados antes del sync no tienen la columna.
         # CREATE TABLE IF NOT EXISTS no altera tablas ya existentes.
