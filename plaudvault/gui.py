@@ -394,8 +394,9 @@ def sandbox_problem(pgid: int, timeout: float = 15) -> str | None:
     Devuelve None si todo bien, o el motivo del fallo. No nos fiamos de los
     argumentos: un script lanzador o /etc/chromium.d pueden añadir flags."""
     deadline = time.monotonic() + timeout
+    unsandboxed: str | None = None
     while time.monotonic() < deadline:
-        renderers = 0
+        renderers, unsandboxed = 0, None
         for pid in group_pids(pgid):
             try:
                 # Chromium reescribe el título de sus procesos: los argumentos pueden
@@ -411,11 +412,13 @@ def sandbox_problem(pgid: int, timeout: float = 15) -> str | None:
                 seccomp = next((ln.split()[1] for ln in status.splitlines()
                                 if ln.startswith("Seccomp:")), "0")
                 if seccomp != "2":  # 2 = filtro seccomp-bpf activo
-                    return f"el renderer {pid} no tiene seccomp activo"
-        if renderers:
+                    # Un renderer recién nacido activa seccomp unos milisegundos
+                    # después de arrancar: solo es fallo si sigue así al acabar el plazo.
+                    unsandboxed = f"el renderer {pid} no tiene seccomp activo"
+        if renderers and unsandboxed is None:
             return None
         time.sleep(0.3)
-    return "no apareció ningún renderer que comprobar"
+    return unsandboxed or "no apareció ningún renderer que comprobar"
 
 
 def free_port() -> int:
