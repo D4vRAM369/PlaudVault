@@ -4,7 +4,7 @@ Primera versión candidata con instalador y escritorio **Bóveda nocturna**.
 
 ## Descargas
 
-- **Ubuntu 24.04 x86_64:** `plaudvault_0.3.0~rc1_amd64.deb`.
+- **Ubuntu 24.04 x86_64:** `plaudvault_0.3.0-rc.1_amd64.deb`.
 - **Portable:** `PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz`.
 - `SHA256SUMS` para comprobar la integridad.
 
@@ -14,7 +14,7 @@ Incluyen Python, la CLI, el frontend y el lanzador Tauri. El sistema necesita We
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0~rc1_amd64.deb
+sudo apt install ./plaudvault_0.3.0-rc.1_amd64.deb
 plaudvault init
 plaudvault desktop
 ```

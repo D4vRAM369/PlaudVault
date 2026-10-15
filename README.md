@@ -76,7 +76,7 @@ Descarga el `.deb` y `SHA256SUMS` desde [Releases](https://github.com/D4vRAM369/
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0~rc1_amd64.deb
+sudo apt install ./plaudvault_0.3.0-rc.1_amd64.deb
 plaudvault init
 plaudvault desktop
 ```

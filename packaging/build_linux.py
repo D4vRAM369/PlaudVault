@@ -23,6 +23,13 @@ def debian_version(version: str) -> str:
     return f'{match[1]}~rc{match[2]}'
 
 
+def deb_filename(version: str) -> str:
+    # GitHub cambia «~» por «.» al subir adjuntos: el nombre del fichero usa la
+    # versión del proyecto para que coincida con SHA256SUMS y las instrucciones.
+    debian_version(version)
+    return f'plaudvault_{version}_amd64.deb'
+
+
 def normalize_modes(root: Path) -> None:
     # El umask del equipo de construcción no debe llegar al paquete (lintian: 775/664).
     for path in [root, *root.rglob('*')]:
@@ -127,7 +134,6 @@ def main() -> None:
     args = parser.parse_args()
     if sys.platform != 'linux' or platform.machine() != 'x86_64':
         parser.error('Este paquete se construye solo en Linux x86_64')
-    deb_version = debian_version(args.version)
     native = args.native.resolve(strict=True)
     if not (ROOT / 'desktop/dist/index.html').is_file():
         parser.error('Compila antes el frontend de desktop/')
@@ -159,7 +165,7 @@ def main() -> None:
         archive.add(bundle, arcname=portable_name, filter=anonymous)
     stage = work / 'debian'
     stage_debian(bundle, stage, args.version, ROOT)
-    deb = output / f'plaudvault_{deb_version}_amd64.deb'
+    deb = output / deb_filename(args.version)
     subprocess.run(['dpkg-deb', '--root-owner-group', '--build', str(stage), str(deb)], check=True)
     (output / 'SHA256SUMS').write_text(''.join(
         f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n' for path in (deb, portable)))

@@ -16,7 +16,7 @@ directorio de descarga:
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0~rc1_amd64.deb
+sudo apt install ./plaudvault_0.3.0-rc.1_amd64.deb
 plaudvault --help
 plaudvault desktop
 ```
@@ -114,7 +114,7 @@ cargo fmt --manifest-path desktop/src-tauri/Cargo.toml --check
 cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
 cargo build --release --locked --manifest-path desktop/src-tauri/Cargo.toml
 .venv-build/bin/python packaging/build_linux.py --native desktop/src-tauri/target/release/plaudvault-desktop --version 0.3.0-rc.1
-.venv-build/bin/python packaging/smoke_package.py --deb dist/release/plaudvault_0.3.0~rc1_amd64.deb
+.venv-build/bin/python packaging/smoke_package.py --deb dist/release/plaudvault_0.3.0-rc.1_amd64.deb
 ```
 
 El constructor usa PyInstaller fijado en `requirements-build.txt`. Los resultados
