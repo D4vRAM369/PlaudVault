@@ -1,7 +1,7 @@
 # PlaudVault
 
 <p align="center">
-  <img src="assets/banner.png" alt="PlaudVault" width="1280">
+  <img src="assets/banner-en.png" alt="PlaudVault" width="1280">
 </p>
 
 <p align="center">
