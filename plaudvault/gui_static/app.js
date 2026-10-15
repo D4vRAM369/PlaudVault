@@ -14,7 +14,7 @@ const el = (tag, props = {}, ...kids) => {
 // Audio SOLO por <audio src> + peticiones Range. Nada de fetch → Blob: el spike
 // (docs/03 paso 23) vio a Chromium guardar Blobs grandes en <perfil>/blob_storage
 // y a Firefox en /tmp/mozilla-temp-*, es decir, el mp3 descifrado en disco.
-let state = { recs: [], listSig: "", current: null, locked: true };
+let state = { recs: [], listSig: "", current: null, locked: true, cryptoEnabled: true };
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -25,8 +25,10 @@ async function api(path, opts) {
 
 // ---------- lista (se refresca sola: el sync puede estar publicando carpetas) ----------
 async function loadList() {
-  const { recordings, locked } = await api("/api/recordings");
-  if (locked !== state.locked) { state.locked = locked; renderLock(); }
+  const { recordings, locked, crypto_enabled = true } = await api("/api/recordings");
+  if (locked !== state.locked || crypto_enabled !== state.cryptoEnabled) {
+    state.locked = locked; state.cryptoEnabled = crypto_enabled; renderLock();
+  }
   const sig = JSON.stringify(recordings);
   if (sig === state.listSig) return;          // nada nuevo: no repintar (no perder el scroll)
   state.listSig = sig; state.recs = recordings;
@@ -48,7 +50,7 @@ async function openRec(key) {
   state.current = key;
   document.querySelectorAll("nav .rec").forEach(a => a.classList.toggle("active", a.dataset.key === key));
   $("welcome").hidden = true; $("results").hidden = true; $("rec").hidden = false;
-  $("rec-title").textContent = key.split("/").pop();
+  $("rec-title").textContent = state.recs.find(r => r.key === key)?.title || key.split("/").pop();
   const rec = await api("/api/rec/" + encodeURI(key));
   const tabs = $("tabs"); tabs.replaceChildren();
   rec.docs.forEach((name, i) => {
@@ -85,6 +87,10 @@ async function renderAudio(hasAudio) {
 // ---------- bloqueo ----------
 function renderLock() {
   const bar = $("lock-bar"); bar.replaceChildren();
+  if (!state.cryptoEnabled) {
+    bar.append(el("span", { textContent: "Audio sin cifrar (configuración del vault)" }));
+    return;
+  }
   if (state.locked) {
     // type=text enmascarado con CSS: un campo type=password activa el gestor de
     // contraseñas («¿Guardar contraseña?»). Sin corrector ortográfico: algunos

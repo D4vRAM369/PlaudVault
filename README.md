@@ -1,7 +1,7 @@
 # PlaudVault
 
 <p align="center">
-  <img src="docs-public/banner.png" alt="PlaudVault" width="1280">
+  <img src="assets/banner.png" alt="PlaudVault" width="1280">
 </p>
 
 <p align="center">
@@ -188,6 +188,35 @@ python -m plaudvault.gui --no-browser   # solo imprime la URL (sin garantía de 
 Para probarla sin tocar tu vault: `python tests/make_gui_fixture.py /tmp/pv-gui`
 y después `python -m plaudvault.gui -c /tmp/pv-gui/config.yaml` (passphrase `test`).
 
+### Escritorio Tauri + Svelte (experimental)
+
+La segunda interfaz conserva la API local de solo lectura y añade el diseño
+**Bóveda nocturna**: carpetas, biblioteca y documentos en tres columnas. Ambas
+interfaces muestran las grabaciones de Plaud y las ingeridas desde archivos
+locales; permiten buscar, leer y escuchar sin modificar el archivo.
+
+Requiere Linux, Rust y las bibliotecas de desarrollo de WebKitGTK. Después de
+instalar el extra `gui`, compila desde la raíz del repositorio:
+
+```bash
+npm --prefix desktop ci
+npm --prefix desktop run build
+cargo build --locked --manifest-path desktop/src-tauri/Cargo.toml
+python -m plaudvault.desktop
+```
+
+No incluye aún instalador ni backend Python empaquetado. Consulta la
+[guía de escritorio](desktop/README.md) para requisitos y opciones, y la
+[galería HTML](mockups/index.html) para las exploraciones visuales.
+
+Tauri usa WebKitGTK en Linux, por lo que su seguridad se prueba por separado
+de Chromium. Se verificaron reproducción y saltos con MP3 sintético de 38,4 MB,
+renderer en sandbox, temporales multimedia en RAM y cierre normal/forzado.
+El lanzador rechaza una sesión sin tmpfs o sin sandbox verificable.
+Estas pruebas respaldan la configuración medida; no son una garantía
+universal de «cero rastro». Véanse las
+[condiciones, procedimiento y límites](assets/tauri-security.md).
+
 ## Importar desde la nube de Plaud
 
 `sync` descarga todo tu histórico a carpetas agrupadas por mes. Es idempotente:
@@ -354,8 +383,9 @@ templates/           # plantillas CoSTAR (fase 1.5, aún no activas)
 - **1.5:** enriquecimiento LLM con plantillas CoSTAR (Anthropic/Ollama),
   export a Obsidian.
 - **2:** UI de escritorio. 🔄 Hecho el primer paso: GUI web local de solo lectura
-  (`plaudvault.gui`), cuya API será el backend de Tauri v2 + Svelte 5. Bot de
-  Telegram bidireccional.
+  (`plaudvault.gui`) y primera versión experimental de Tauri v2 + Svelte 5
+  (`plaudvault.desktop`) sobre la misma API. Pendientes: empaquetado y
+  validación en más entornos. Bot de Telegram bidireccional pendiente.
 - **3:** ~~syncer con la API no oficial de Plaud~~ ✅ hecho (`sync`).
 
 ## Licencia
