@@ -22,13 +22,17 @@ fetchall() (nunca un cursor vivo). Ver docs/SESION_3_GUI.md.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import secrets
+import shutil
+import signal
 import socket
 import sqlite3
+import subprocess
+import tempfile
 import threading
 import time
-import webbrowser
 from pathlib import Path
 from urllib.parse import quote
 
@@ -320,6 +324,100 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
     return app
 
 
+# ---------- navegador efímero: cero rastro en disco ----------
+#
+# no-store le PIDE al navegador que no guarde nada, pero cada uno decide: historial,
+# autocompletado, gestor de contraseñas, caché multimedia… La única garantía que
+# no depende del navegador es darle un perfil que vive en RAM (tmpfs) y borrarlo
+# al cerrar. Solo familia Chromium: Firefox no permite abrir con un perfil nuevo
+# en modo app de forma fiable.
+
+CHROMIUM_FAMILY = ("thorium-browser", "chromium", "chromium-browser", "google-chrome",
+                   "google-chrome-stable", "brave-browser", "microsoft-edge")
+
+
+def find_browser(explicit: str | None = None) -> str | None:
+    if explicit:
+        return shutil.which(explicit)
+    return next((p for b in CHROMIUM_FAMILY if (p := shutil.which(b))), None)
+
+
+def ram_dir() -> Path | None:
+    """Un directorio escribible que sea de verdad RAM (tmpfs/ramfs), comprobado en
+    /proc/mounts: que exista /dev/shm no basta para afirmarlo."""
+    try:
+        with open("/proc/mounts", encoding="utf-8") as f:
+            fstype = {parts[1]: parts[2] for parts in (line.split() for line in f)}
+    except OSError:  # macOS/Windows: sin /proc
+        return None
+    for cand in ("/dev/shm", os.environ.get("XDG_RUNTIME_DIR")):
+        if cand and fstype.get(cand) in ("tmpfs", "ramfs") and os.access(cand, os.W_OK):
+            return Path(cand)
+    return None
+
+
+def browser_cmd(browser: str, profile: Path, url: str) -> list[str]:
+    # NUNCA --no-sandbox: el sandbox de Chromium (seccomp + namespaces) encierra a
+    # los renderers, que son los que interpretan contenido de terceros (las notas).
+    return [browser,
+            f"--user-data-dir={profile}",          # perfil entero (historial, contraseñas…) en RAM
+            f"--disk-cache-dir={profile / 'cache'}",  # la caché HTTP/multimedia, también
+            f"--app={url}",                        # ventana sin barra de direcciones ni pestañas
+            # Red aislada: todo sale por un proxy que no existe (puerto 9 = discard).
+            # Chromium deja pasar 127.0.0.1 sin proxy, así que solo llega a la GUI:
+            # ni telemetría, ni actualizaciones, ni webs externas desde una nota.
+            "--proxy-server=127.0.0.1:9",
+            "--disable-background-networking", "--disable-component-update",
+            "--disable-sync", "--disable-extensions", "--no-pings",
+            "--no-first-run", "--no-default-browser-check"]
+
+
+def browser_env() -> dict[str, str]:
+    """Entorno sin las variables con las que los lanzadores de Debian/Ubuntu
+    añaden flags por su cuenta (CHROMIUM_FLAGS podría traer --no-sandbox)."""
+    return {k: v for k, v in os.environ.items() if k not in ("CHROMIUM_FLAGS", "CHROME_FLAGS")}
+
+
+def group_pids(pgid: int) -> list[int]:
+    pids = []
+    for d in Path("/proc").iterdir():
+        try:
+            if d.name.isdigit() and os.getpgid(int(d.name)) == pgid:
+                pids.append(int(d.name))
+        except (ProcessLookupError, PermissionError):
+            pass
+    return pids
+
+
+def sandbox_problem(pgid: int, timeout: float = 15) -> str | None:
+    """Comprueba en /proc que el navegador lanzado está de verdad en sandbox.
+    Devuelve None si todo bien, o el motivo del fallo. No nos fiamos de los
+    argumentos: un script lanzador o /etc/chromium.d pueden añadir flags."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        renderers = 0
+        for pid in group_pids(pgid):
+            try:
+                # Chromium reescribe el título de sus procesos: los argumentos pueden
+                # venir separados por espacios en vez de por \0. Partimos por ambos.
+                cmdline = re.split(rb"[\0 ]", Path(f"/proc/{pid}/cmdline").read_bytes())
+                status = Path(f"/proc/{pid}/status").read_text()
+            except OSError:
+                continue
+            if b"--no-sandbox" in cmdline:
+                return f"el proceso {pid} se lanzó con --no-sandbox"
+            if b"--type=renderer" in cmdline:
+                renderers += 1
+                seccomp = next((ln.split()[1] for ln in status.splitlines()
+                                if ln.startswith("Seccomp:")), "0")
+                if seccomp != "2":  # 2 = filtro seccomp-bpf activo
+                    return f"el renderer {pid} no tiene seccomp activo"
+        if renderers:
+            return None
+        time.sleep(0.3)
+    return "no apareció ningún renderer que comprobar"
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -330,7 +428,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="GUI local de PlaudVault (solo lectura)")
     ap.add_argument("-c", "--config", default="config.yaml")
     ap.add_argument("-p", "--port", type=int, default=0, help="0 = aleatorio")
-    ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--browser", help="ejecutable de la familia Chromium (por defecto: el primero instalado)")
+    ap.add_argument("--no-browser", action="store_true",
+                    help="no abrir navegador; tú abres la URL (sin garantía de cero rastro)")
     a = ap.parse_args()
 
     import uvicorn  # perezoso: solo hace falta al servir
@@ -340,12 +440,64 @@ def main() -> None:
     token = secrets.token_urlsafe(32)
     app = create_app(cfg, token, {f"127.0.0.1:{port}", f"localhost:{port}"})
     threading.Thread(target=app.state.vault.auto_lock_loop, daemon=True).start()
-
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
     url = f"http://127.0.0.1:{port}/login?t={token}"
-    print(f"PlaudVault GUI → {url}\n(el enlace sirve una sola vez; Ctrl+C para cerrar)", flush=True)
-    if not a.no_browser:
-        webbrowser.open(url)
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+
+    browser = None if a.no_browser else find_browser(a.browser)
+    ram = ram_dir()
+    if browser is None or ram is None:
+        why = ("--no-browser" if a.no_browser else
+               "no hay navegador de la familia Chromium" if browser is None else
+               "no hay un directorio en RAM (tmpfs) para el perfil")
+        print(f"⚠️  Sin navegador efímero ({why}). Si abres la URL en tu navegador normal, "
+              "este puede guardar en disco historial, caché o la passphrase.\n"
+              "   Usa al menos una ventana privada.", flush=True)
+        print(f"PlaudVault GUI → {url}\n(el enlace sirve una sola vez; Ctrl+C para cerrar)", flush=True)
+        server.run()
+        return
+
+    profile = Path(tempfile.mkdtemp(prefix="plaudvault-gui-", dir=ram))  # 0700: solo tu usuario
+    proc = None
+    try:
+        proc = subprocess.Popen(browser_cmd(browser, profile, url), env=browser_env(),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                start_new_session=True)
+        if problem := sandbox_problem(proc.pid):
+            print(f"❌ Navegador cerrado: sin sandbox ({problem}). No se abre la GUI.", flush=True)
+            return  # el finally mata el grupo y borra el perfil
+        print(f"PlaudVault GUI abierta en {Path(browser).name} con perfil en RAM "
+              "(se borra al cerrar). Cierra la ventana o pulsa Ctrl+C.", flush=True)
+
+        def stop_when_browser_closes():
+            started = time.monotonic()
+            proc.wait()
+            # Si el lanzador sale enseguida (p. ej. delega en otro proceso), no
+            # cerramos el servidor: se cierra con Ctrl+C.
+            if time.monotonic() - started > 5:
+                server.should_exit = True
+
+        threading.Thread(target=stop_when_browser_closes, daemon=True).start()
+        server.run()
+    finally:
+        if proc is not None:
+            kill_group(proc)  # el grupo entero: los hijos sobreviven al lanzador
+        shutil.rmtree(profile, ignore_errors=True)
+
+
+def kill_group(proc: subprocess.Popen) -> None:
+    """SIGTERM al grupo, espera hasta 5 s a que se vacíe, y SIGKILL si no. Así
+    ningún proceso del navegador sigue escribiendo en el perfil que vamos a borrar."""
+    pgid = proc.pid
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+        for _ in range(50):
+            time.sleep(0.1)
+            proc.poll()         # recoge al lanzador: un zombie también cuenta como vivo
+            os.killpg(pgid, 0)  # ProcessLookupError = ya no queda nadie
+        os.killpg(pgid, signal.SIGKILL)
+        time.sleep(0.3)
+    except ProcessLookupError:
+        pass
 
 
 if __name__ == "__main__":

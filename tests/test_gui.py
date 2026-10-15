@@ -6,8 +6,10 @@ Monta un vault de prueba con tests/make_gui_fixture.py (PlaudSync real, mp3
 real de 6 s, passphrase "test") en un directorio temporal.
 """
 
+import os
 import sys
 import tempfile
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -18,7 +20,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 from make_gui_fixture import PASSPHRASE, build  # noqa: E402
 from plaudvault.config import load_config  # noqa: E402
 from plaudvault.crypto import decrypt_bytes, unlock  # noqa: E402
-from plaudvault.gui import create_app, fts_query, scan  # noqa: E402
+from plaudvault.gui import (browser_cmd, browser_env, create_app, fts_query,  # noqa: E402
+                            ram_dir, scan)
 
 
 def logged_client(base: Path):
@@ -101,5 +104,29 @@ def test_everything():
     print("✅ test_everything")
 
 
+def test_zero_trace():
+    """Cero rastro en disco: flags del navegador efímero y frontend sin fugas."""
+    prof = Path("/dev/shm/plaudvault-gui-x")
+    cmd = browser_cmd("chromium", prof, "http://127.0.0.1:1/login?t=x")
+    assert f"--user-data-dir={prof}" in cmd and f"--disk-cache-dir={prof / 'cache'}" in cmd
+    assert "--proxy-server=127.0.0.1:9" in cmd            # red: solo 127.0.0.1
+    assert not any("no-sandbox" in a for a in cmd)          # el sandbox nunca se apaga
+    with mock.patch.dict(os.environ, {"CHROMIUM_FLAGS": "--no-sandbox"}):
+        assert "CHROMIUM_FLAGS" not in browser_env()        # el lanzador de Debian lo inyectaría
+    ram = ram_dir()
+    if ram is not None:  # en Linux: debe ser tmpfs/ramfs de verdad
+        mounts = {l.split()[1]: l.split()[2] for l in open("/proc/mounts")}
+        assert mounts[str(ram)] in ("tmpfs", "ramfs")
+    static = Path(__file__).resolve().parent.parent / "plaudvault" / "gui_static"
+    js = (static / "app.js").read_text(); page = (static / "index.html").read_text()
+    code = "\n".join(l for l in js.splitlines() if not l.strip().startswith("//"))
+    assert "location.hash" not in code and 'href: "#' not in code   # títulos fuera del historial
+    assert "<form" not in page                                     # consultas fuera del autocompletado
+    assert "createObjectURL" not in code                           # audio nunca como Blob (spike)
+    assert 'type: "password"' not in code or "masked ?" in code     # sin gestor de contraseñas (si hay CSS)
+    print("✅ test_zero_trace")
+
+
 if __name__ == "__main__":
     test_everything()
+    test_zero_trace()
