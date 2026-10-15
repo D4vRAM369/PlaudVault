@@ -1,0 +1,1 @@
+{"productName":"PV isolated probe","version":"0.0.0","identifier":"local.plaudvault.probe","build":{"frontendDist":"ui"},"app":{"windows":[],"security":{"csp":"default-src 'self'; media-src http://127.0.0.1:18761; connect-src http://127.0.0.1:18761 http://127.0.0.2:18762; script-src 'self' 'unsafe-inline'"}},"bundle":{"active":false}}
