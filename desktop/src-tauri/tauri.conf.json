@@ -1,9 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "PlaudVault",
-  "version": "0.1.0",
+  "version": "0.3.0-rc.1",
   "identifier": "local.plaudvault.desktop",
-  "build": { "frontendDist": "bootstrap" },
+  "build": {
+    "frontendDist": "bootstrap"
+  },
   "app": {
     "windows": [],
     "security": {
@@ -11,5 +13,7 @@
       "capabilities": []
     }
   },
-  "bundle": { "active": false }
+  "bundle": {
+    "active": false
+  }
 }

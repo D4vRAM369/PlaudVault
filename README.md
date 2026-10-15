@@ -70,6 +70,44 @@ por Telegram.
 
 ## Instalación
 
+### Instalador Linux — v0.3.0-rc.1 (experimental)
+
+Descarga el `.deb` y `SHA256SUMS` desde [Releases](https://github.com/D4vRAM369/PlaudVault/releases). Compatibilidad inicial: **Ubuntu 24.04 x86_64**. El paquete incluye Python, la CLI y la GUI Tauri: no necesitas clonar el repositorio, Node ni Rust. `apt` instala las bibliotecas del sistema declaradas (WebKitGTK, GTK, bubblewrap y GStreamer).
+
+```bash
+sha256sum --ignore-missing --check SHA256SUMS
+sudo apt install ./plaudvault_0.3.0~rc1_amd64.deb
+plaudvault init
+plaudvault desktop
+```
+
+`init` pide la passphrase; guárdala porque no existe recuperación. La aplicación aparece también en el menú. La GUI es de solo lectura: **el token y la sincronización siguen en la CLI**. Para los ejemplos de esta guía, el paquete usa `plaudvault` en lugar de `python -m plaudvault`; el escritorio se abre con `plaudvault desktop`.
+
+La configuración instalada busca `$XDG_CONFIG_HOME/plaudvault/config.yaml` o `~/.config/plaudvault/config.yaml`. Si no existe, usa la plantilla incluida con rutas a `~/PlaudVault`, sin crear configuración al abrir la GUI. Para personalizarla:
+
+```bash
+mkdir -p ~/.config/plaudvault
+cp /usr/share/doc/plaudvault/config.example.yaml ~/.config/plaudvault/config.yaml
+```
+
+Se conserva `-c` para elegir otra configuración. La primera transcripción de audio puede descargar el modelo Whisper; los modelos no se incluyen en el paquete.
+
+### Portable
+
+La misma release ofrece `PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz`. Incluye Python, pero requiere las bibliotecas del sistema; no es un AppImage ni un binario estático.
+
+```bash
+sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0t64 bubblewrap gstreamer1.0-plugins-good gstreamer1.0-libav
+tar -xzf PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz
+cd PlaudVault-0.3.0-rc.1-linux-x86_64
+./plaudvault init
+./plaudvault desktop
+```
+
+Comprueba antes `SHA256SUMS`. Para desinstalar el `.deb`, ejecuta `sudo apt remove plaudvault`: el programa no incluye tu bóveda personal y la desinstalación no la elimina. Consulta [la guía de empaquetado](packaging/README.md) y [las condiciones de seguridad](assets/tauri-security.md). No se ha establecido compatibilidad con otras distribuciones o arquitecturas.
+
+### Desde el código fuente
+
 ```bash
 git clone https://github.com/D4vRAM369/PlaudVault.git && cd PlaudVault
 python -m venv .venv && source .venv/bin/activate
@@ -205,7 +243,7 @@ cargo build --locked --manifest-path desktop/src-tauri/Cargo.toml
 python -m plaudvault.desktop
 ```
 
-No incluye aún instalador ni backend Python empaquetado. Consulta la
+La release candidata incluye instalador y backend Python empaquetado. Para compilar desde las fuentes, consulta la
 [guía de escritorio](desktop/README.md) para requisitos y opciones, y la
 [galería HTML](mockups/index.html) para las exploraciones visuales.
 
@@ -384,8 +422,8 @@ templates/           # plantillas CoSTAR (fase 1.5, aún no activas)
   export a Obsidian.
 - **2:** UI de escritorio. 🔄 Hecho el primer paso: GUI web local de solo lectura
   (`plaudvault.gui`) y primera versión experimental de Tauri v2 + Svelte 5
-  (`plaudvault.desktop`) sobre la misma API. Pendientes: empaquetado y
-  validación en más entornos. Bot de Telegram bidireccional pendiente.
+  (`plaudvault.desktop`) sobre la misma API. Primera prerelease con `.deb` y portable para Ubuntu 24.04 x86_64;
+  pendiente validación en más entornos. Bot de Telegram bidireccional pendiente.
 - **3:** ~~syncer con la API no oficial de Plaud~~ ✅ hecho (`sync`).
 
 ## Licencia
