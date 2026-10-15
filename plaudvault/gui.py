@@ -45,7 +45,7 @@ STATIC = Path(__file__).with_name("gui_static")
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                ".gif": "image/gif", ".webp": "image/webp"}  # sin SVG: puede llevar scripts
 AUTO_LOCK_SECS = 15 * 60
-CSP = ("default-src 'self'; media-src 'self' blob:; img-src 'self'; "
+CSP = ("default-src 'self'; media-src 'self'; img-src 'self'; "  # sin blob: (ver spike)
        "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 
 # html=False: un <script> dentro de una nota se muestra como texto, no se ejecuta.
@@ -273,8 +273,8 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
         if (not rel_parts or target.suffix.lower() not in IMAGE_TYPES or not target.is_file()
                 or any(p.endswith(".partial") for p in rel_parts)):
             raise HTTPException(404)
-        return FileResponse(target, media_type=IMAGE_TYPES[target.suffix.lower()],
-                            headers={"Cache-Control": "private, max-age=300"})
+        # Sin cabecera propia: el middleware pone no-store (nada en la caché de disco).
+        return FileResponse(target, media_type=IMAGE_TYPES[target.suffix.lower()])
 
     @app.get("/api/search")
     def search(q: str, limit: int = 30):

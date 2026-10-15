@@ -63,6 +63,7 @@ def test_everything():
         r = c.get(img)
         assert r.status_code == 200 and r.content.startswith(b"\x89PNG")
         assert "default-src 'self'" in r.headers["content-security-policy"]
+        assert r.headers["cache-control"] == "no-store"  # infografías fuera de la caché de disco
         for bad in ("/files/../vault.salt", "/files/%2e%2e/vault.salt",
                     f"/files/{key}/audio.pv", "/files/10-26/x.partial/a.png"):
             assert c.get(bad).status_code == 404, bad

@@ -1,4 +1,6 @@
-// PlaudVault GUI: vanilla JS, sin build. Todo el texto que viene de la DB o de
+// PlaudVault GUI: vanilla JS, sin build.
+// Cero rastro: nada personal en la URL (historial), ni <form> (autocompletado),
+// ni campo type=password (gestor de contraseñas). Todo el texto que viene de la DB o de
 // los ficheros se mete con textContent; solo el HTML de Markdown (renderizado en
 // el servidor con html=False) va por innerHTML.
 "use strict";
@@ -9,10 +11,10 @@ const el = (tag, props = {}, ...kids) => {
   return n;
 };
 
-// ponytail: modo de audio fijado por el spike (docs/SESION_3_GUI.md).
-const AUDIO_MODE = "range";   // "range" = <audio src> con peticiones Range · "blob" = fetch → Blob
-
-let state = { recs: [], listSig: "", current: null, locked: true, blobUrl: null };
+// Audio SOLO por <audio src> + peticiones Range. Nada de fetch → Blob: el spike
+// (docs/03 paso 23) vio a Chromium guardar Blobs grandes en <perfil>/blob_storage
+// y a Firefox en /tmp/mozilla-temp-*, es decir, el mp3 descifrado en disco.
+let state = { recs: [], listSig: "", current: null, locked: true };
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -32,7 +34,9 @@ async function loadList() {
   let group = null;
   for (const r of recordings) {
     if (r.group !== group) { group = r.group; nav.append(el("h2", { textContent: group || "(raíz)" })); }
-    const a = el("a", { href: "#" + encodeURIComponent(r.key), textContent: r.title, title: r.title });
+    // Botón y no <a href="#clave">: el título de la grabación no debe acabar en el historial.
+    const a = el("button", { className: "rec", textContent: r.title, title: r.title, onclick: () => openRec(r.key) });
+    a.dataset.key = r.key;
     if (!r.indexed) a.append(el("span", { className: "badge", textContent: "sin indexar" }));
     if (state.current === r.key) a.classList.add("active");
     nav.append(a);
@@ -42,7 +46,7 @@ async function loadList() {
 // ---------- una grabación ----------
 async function openRec(key) {
   state.current = key;
-  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + encodeURIComponent(key)));
+  document.querySelectorAll("nav .rec").forEach(a => a.classList.toggle("active", a.dataset.key === key));
   $("welcome").hidden = true; $("results").hidden = true; $("rec").hidden = false;
   $("rec-title").textContent = key.split("/").pop();
   const rec = await api("/api/rec/" + encodeURI(key));
@@ -67,7 +71,6 @@ async function showDoc(key, name, btn) {
 function dropAudio() {
   const old = document.querySelector("audio");
   if (old) { old.pause(); old.removeAttribute("src"); old.load(); }  // suelta el buffer
-  if (state.blobUrl) { URL.revokeObjectURL(state.blobUrl); state.blobUrl = null; }
 }
 
 async function renderAudio(hasAudio) {
@@ -75,24 +78,22 @@ async function renderAudio(hasAudio) {
   const box = $("audio-box"); box.replaceChildren();
   if (!hasAudio) return;
   if (state.locked) { box.append(el("p", { className: "badge", textContent: "🔒 Desbloquea el vault para escuchar el audio." })); return; }
-  const url = "/api/audio/" + encodeURI(state.current);
-  const audio = el("audio", { controls: true, preload: "metadata" });
-  if (AUDIO_MODE === "blob") {
-    const r = await fetch(url);
-    if (!r.ok) { box.append(el("p", { className: "err", textContent: "No se pudo descifrar el audio." })); return; }
-    state.blobUrl = URL.createObjectURL(await r.blob());
-    audio.src = state.blobUrl;
-  } else {
-    audio.src = url;
-  }
-  box.append(audio);
+  box.append(el("audio", { controls: true, preload: "metadata",
+                          src: "/api/audio/" + encodeURI(state.current) }));
 }
 
 // ---------- bloqueo ----------
 function renderLock() {
   const bar = $("lock-bar"); bar.replaceChildren();
   if (state.locked) {
-    const pass = el("input", { type: "password", placeholder: "Passphrase", autocomplete: "off" });
+    // type=text enmascarado con CSS: un campo type=password activa el gestor de
+    // contraseñas («¿Guardar contraseña?»). Sin corrector ortográfico: algunos
+    // envían lo que escribes a un servicio en la nube.
+    const masked = CSS.supports("-webkit-text-security", "disc");
+    const pass = el("input", { type: masked ? "text" : "password", placeholder: "Passphrase",
+                               autocomplete: "off", spellcheck: false, autocapitalize: "off" });
+    pass.setAttribute("autocorrect", "off");
+    pass.classList.add("secret");
     const msg = el("span");
     const go = async () => {
       msg.textContent = "Derivando clave…";
@@ -129,15 +130,15 @@ async function search(q) {
     if (!results.length) box.append(el("p", { textContent: "Sin resultados." }));
     for (const r of results) {
       const title = r.key ? r.key.split("/").pop() : r.filename + " (carpeta no encontrada)";
-      const link = el("a", { textContent: title, href: r.key ? "#" + encodeURIComponent(r.key) : "#" });
+      const link = el("button", { className: "rec", textContent: title, disabled: !r.key, onclick: () => openRec(r.key) });
       box.append(el("div", { className: "hit" }, link, el("span", { className: "badge", textContent: r.kind || "" }), fragment(r.frag || "")));
     }
   } catch (e) { box.append(el("p", { className: "err", textContent: e.message })); }
 }
 
 // ---------- arranque ----------
-window.addEventListener("hashchange", () => { const k = decodeURIComponent(location.hash.slice(1)); if (k) openRec(k); });
-$("search-form").addEventListener("submit", e => { e.preventDefault(); const q = $("q").value.trim(); if (q) search(q); });
+// Enter en el buscador, sin <form>: un submit hace que el navegador guarde la consulta.
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") { const q = $("q").value.trim(); if (q) search(q); } });
 renderLock();
-loadList().then(() => { const k = decodeURIComponent(location.hash.slice(1)); if (k) openRec(k); });
+loadList();
 setInterval(() => { if (!document.hidden) loadList().catch(() => {}); }, 10000);
