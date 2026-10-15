@@ -23,6 +23,21 @@ def debian_version(version: str) -> str:
     return f'{match[1]}~rc{match[2]}'
 
 
+def normalize_modes(root: Path) -> None:
+    # El umask del equipo de construcción no debe llegar al paquete (lintian: 775/664).
+    for path in [root, *root.rglob('*')]:
+        if path.is_symlink(): continue
+        executable = path.is_dir() or path.stat().st_mode & 0o111
+        path.chmod(0o755 if executable else 0o644)
+
+
+def anonymous(info: tarfile.TarInfo) -> tarfile.TarInfo:
+    # Sin usuario ni grupo del equipo de construcción dentro del portable.
+    info.uid = info.gid = 0
+    info.uname = info.gname = 'root'
+    return info
+
+
 def stage_debian(bundle: Path, stage: Path, version: str, project: Path) -> None:
     deb_version = debian_version(version)
     destination = stage / 'usr/lib/plaudvault'
@@ -49,7 +64,7 @@ def stage_debian(bundle: Path, stage: Path, version: str, project: Path) -> None
     size = sum(p.stat().st_size for p in destination.rglob('*') if p.is_file() and not p.is_symlink()) // 1024
     (control / 'control').write_text(
         f'Package: plaudvault\nVersion: {deb_version}\nArchitecture: amd64\n'
-        'Maintainer: D4vRAM369\nSection: sound\nPriority: optional\n'
+        'Maintainer: D4vRAM369 <77559296+D4vRAM369@users.noreply.github.com>\nSection: sound\nPriority: optional\n'
         f'Installed-Size: {size}\n'
         'Depends: libc6 (>= 2.39), libwebkit2gtk-4.1-0 (>= 2.44), libgtk-3-0t64, '
         'libstdc++6, bubblewrap, gstreamer1.0-plugins-good, gstreamer1.0-libav\n'
@@ -57,6 +72,7 @@ def stage_debian(bundle: Path, stage: Path, version: str, project: Path) -> None
         'Description: Boveda local de grabaciones de voz (experimental)\n'
         ' Incluye CLI, Python y escritorio Tauri con audio cifrado.\n'
         ' Los textos quedan en claro. Requiere sesion grafica Linux y tmpfs.\n')
+    normalize_modes(stage)
 
 
 def add_licenses(bundle: Path) -> None:
@@ -130,6 +146,7 @@ def main() -> None:
     (bundle / 'assets').mkdir(exist_ok=True)
     shutil.copy2(ROOT / 'assets/tauri-security.md', bundle / 'assets/tauri-security.md')
     add_licenses(bundle)
+    normalize_modes(bundle)
     # Un bundle distribuible no puede enlazar bibliotecas al equipo de construcción.
     for path in bundle.rglob('*'):
         if path.is_symlink() and not path.resolve().is_relative_to(bundle.resolve()):
@@ -139,7 +156,7 @@ def main() -> None:
     portable_name = f'PlaudVault-{args.version}-linux-x86_64'
     portable = output / f'{portable_name}.tar.gz'
     with tarfile.open(portable, 'w:gz') as archive:
-        archive.add(bundle, arcname=portable_name)
+        archive.add(bundle, arcname=portable_name, filter=anonymous)
     stage = work / 'debian'
     stage_debian(bundle, stage, args.version, ROOT)
     deb = output / f'plaudvault_{deb_version}_amd64.deb'
