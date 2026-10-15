@@ -76,6 +76,11 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def fts_query(text: str) -> str:
+    """Texto libre a FTS5: palabras literales, combinadas con AND."""
+    return " ".join('"' + word.replace('"', '""') + '"' for word in text.split())
+
+
 class VaultDB:
     """Capa de acceso a datos. Todo el SQL del proyecto vive aquí.
 
@@ -171,6 +176,8 @@ class VaultDB:
     def search(self, query: str, limit: int = 10) -> list[sqlite3.Row]:
         """Búsqueda full-text. snippet() devuelve el fragmento donde aparece
         el término, con marcadores >>> <<< alrededor de la coincidencia."""
+        if not query.strip():
+            return []
         return self.conn.execute(
             """SELECT r.id, r.filename, r.ingested_at, r.source_type,
                       snippet(transcripts_fts, 0, '>>>', '<<<', ' … ', 12) AS frag
@@ -180,7 +187,7 @@ class VaultDB:
                WHERE transcripts_fts MATCH ?
                ORDER BY rank
                LIMIT ?""",
-            (query, limit),
+            (fts_query(query), limit),
         ).fetchall()
 
     def get_recording(self, recording_id: int) -> sqlite3.Row | None:
