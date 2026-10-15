@@ -1,11 +1,11 @@
-# PlaudVault v0.3.0-rc.1 — primera distribución Linux
+# PlaudVault v0.3.0 — primera distribución Linux
 
-Primera versión candidata con instalador y escritorio **Bóveda nocturna**.
+Primera versión con instalador y escritorio **Bóveda nocturna**.
 
 ## Descargas
 
-- **Ubuntu 24.04 x86_64:** `plaudvault_0.3.0~rc1_amd64.deb`.
-- **Portable:** `PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz`.
+- **Ubuntu 24.04 x86_64:** `plaudvault_0.3.0_amd64.deb`.
+- **Portable:** `PlaudVault-0.3.0-linux-x86_64.tar.gz`.
 - `SHA256SUMS` para comprobar la integridad.
 
 Incluyen Python, la CLI, el frontend y el lanzador Tauri. El sistema necesita WebKitGTK, GTK, bubblewrap y los componentes multimedia declarados; `apt` resuelve esas dependencias al instalar el `.deb`.
@@ -14,7 +14,7 @@ Incluyen Python, la CLI, el frontend y el lanzador Tauri. El sistema necesita We
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0~rc1_amd64.deb
+sudo apt install ./plaudvault_0.3.0_amd64.deb
 plaudvault init
 plaudvault desktop
 ```
@@ -29,7 +29,7 @@ Guarda la passphrase: sin ella no puedes recuperar el audio cifrado. Encontrará
 - Arranque verificado con perfil en RAM y renderer en sandbox.
 - CLI incluida para importar archivos, sincronizar Plaud y gestionar el archivo.
 
-## Límites de esta candidata
+## Límites de esta versión
 
 Solo se cifra el **audio**; transcripciones y notas permanecen en claro. No protege contra malware activo en la sesión. Sin swap cifrado, la RAM puede acabar en disco. La configuración medida no garantiza cero rastro en todas las distribuciones o versiones de WebKitGTK.
 

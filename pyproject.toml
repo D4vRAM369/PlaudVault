@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plaudvault"
-version = "0.3.0rc1"
+version = "0.3.0"
 description = "Bóveda local cifrada para grabaciones de voz: importa audio, transcripciones, notas e infografías de Plaud"
 readme = "README.md"
 license = { file = "LICENSE" }

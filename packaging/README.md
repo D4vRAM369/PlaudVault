@@ -11,12 +11,12 @@ El ejecutable nativo por separado no es el punto de entrada público. Por eso
 
 ## Instalar el paquete Debian
 
-Descarga el `.deb` y `SHA256SUMS` de la misma prerelease de GitHub. Desde el
+Descarga el `.deb` y `SHA256SUMS` de la misma release de GitHub. Desde el
 directorio de descarga:
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0~rc1_amd64.deb
+sudo apt install ./plaudvault_0.3.0_amd64.deb
 plaudvault --help
 plaudvault desktop
 ```
@@ -36,14 +36,14 @@ El archivo personal y su configuración no forman parte del paquete instalado.
 
 ## Usar la distribución portable
 
-Descarga el `.tar.gz` y `SHA256SUMS` de la misma prerelease y compruébalos antes
+Descarga el `.tar.gz` y `SHA256SUMS` de la misma release y compruébalos antes
 de extraer. Este formato incluye Python, pero sigue necesitando las bibliotecas
 del sistema; no es un AppImage ni un binario estático.
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
 sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0t64 bubblewrap gstreamer1.0-plugins-good gstreamer1.0-libav
-tar -xzf PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz
+tar -xzf PlaudVault-0.3.0-linux-x86_64.tar.gz
 ```
 
 Abre una terminal en la carpeta extraída que contiene `plaudvault`:
@@ -113,8 +113,8 @@ npm --prefix desktop run build
 cargo fmt --manifest-path desktop/src-tauri/Cargo.toml --check
 cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
 cargo build --release --locked --manifest-path desktop/src-tauri/Cargo.toml
-.venv-build/bin/python packaging/build_linux.py --native desktop/src-tauri/target/release/plaudvault-desktop --version 0.3.0-rc.1
-.venv-build/bin/python packaging/smoke_package.py --deb dist/release/plaudvault_0.3.0~rc1_amd64.deb
+.venv-build/bin/python packaging/build_linux.py --native desktop/src-tauri/target/release/plaudvault-desktop --version 0.3.0
+.venv-build/bin/python packaging/smoke_package.py --deb dist/release/plaudvault_0.3.0_amd64.deb
 ```
 
 El constructor usa PyInstaller fijado en `requirements-build.txt`. Los resultados
@@ -129,12 +129,12 @@ no instala el paquete ni toca el archivo personal.
 y mediante ejecución manual. Esos casos guardan artefactos en Actions, sin
 publicar una release.
 
-Solo un push de etiqueta con el formato `vX.Y.Z-rc.N`, que coincida exactamente
-con `desktop/src-tauri/tauri.conf.json`, puede publicar una **prerelease**. Antes
+Solo un push de etiqueta `vX.Y.Z` o `vX.Y.Z-rc.N`, que coincida exactamente con
+`desktop/src-tauri/tauri.conf.json`, puede publicar. Las candidatas (`-rc.N`) salen
+como **prerelease**; una versión estable se marca como **Latest**. Antes
 de etiquetar, actualiza las versiones y `packaging/RELEASE_NOTES.md`; comprueba
 el resultado de las pruebas. La publicación depende de que termine correctamente
-la construcción y vuelve a verificar los checksums. Una etiqueta estable se
-rechaza deliberadamente: este flujo no publica versiones estables.
+la construcción y vuelve a verificar los checksums.
 
 El permiso de escritura y el token de publicación solo se conceden al trabajo
 de publicación de etiquetas, nunca a una PR. Los paquetes no tienen firma
