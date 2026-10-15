@@ -5,7 +5,11 @@
 </p>
 
 <p align="center">
-  Bóveda local para tus grabaciones de voz: importa, transcribe, busca y guarda el audio cifrado en tu disco.
+  Bóveda local para tus grabaciones de voz y sus notas generadas: importa, transcribe, busca y guarda el audio cifrado en tu disco.
+</p>
+
+<p align="center">
+  <b>Español</b> · <a href="README-EN.md">English</a>
 </p>
 
 <p align="center">
@@ -29,7 +33,7 @@
 </p>
 
 Tus grabaciones vuelven a tu disco. PlaudVault es una bóveda local para
-grabaciones de voz de Plaud Note o cualquier fuente, con transcripción local,
+tus grabaciones de voz y sus notas generadas, de Plaud Note o cualquier fuente, con transcripción local,
 búsqueda y cifrado del audio.
 
 **El cifrado protege solo el audio.** Las transcripciones, notas e infografías
