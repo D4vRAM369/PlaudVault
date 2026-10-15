@@ -31,3 +31,6 @@ dist/
 # Instrucciones locales para IA y doc PBL (no publicar)
 CLAUDE.md
 COMO_FUNCIONA.md
+
+# Instrucciones locales para Codex (equivalente a CLAUDE.md, no publicar)
+AGENTS.md
