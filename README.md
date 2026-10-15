@@ -1,7 +1,7 @@
 # PlaudVault
 
 <p align="center">
-  <img src="docs-public/banner.png" alt="PlaudVault" width="1280">
+  <img src="assets/banner.png" alt="PlaudVault" width="1280">
 </p>
 
 <p align="center">
@@ -215,7 +215,7 @@ renderer en sandbox, temporales multimedia en RAM y cierre normal/forzado.
 El lanzador rechaza una sesión sin tmpfs o sin sandbox verificable.
 Estas pruebas respaldan la configuración medida; no son una garantía
 universal de «cero rastro». Véanse las
-[condiciones, procedimiento y límites](docs-public/tauri-security.md).
+[condiciones, procedimiento y límites](assets/tauri-security.md).
 
 ## Importar desde la nube de Plaud
 

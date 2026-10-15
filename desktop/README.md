@@ -45,4 +45,4 @@ npm run build
 cargo test --locked --manifest-path src-tauri/Cargo.toml
 ```
 
-El ensayo nativo reproducible está en `../scratch/desktop-integration/run.py` y usa únicamente datos ficticios. Requiere `ffmpeg`, `strace`, Rust, las dependencias nativas, una sesión gráfica y `/dev/shm` escribible. No sustituye una auditoría del sistema. Véase `../docs-public/tauri-security.md` para condiciones y límites.
+El ensayo nativo reproducible está en `../scratch/desktop-integration/run.py` y usa únicamente datos ficticios. Requiere `ffmpeg`, `strace`, Rust, las dependencias nativas, una sesión gráfica y `/dev/shm` escribible. No sustituye una auditoría del sistema. Véase `../assets/tauri-security.md` para condiciones y límites.
