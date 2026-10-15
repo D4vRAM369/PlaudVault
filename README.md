@@ -32,6 +32,68 @@ python -m plaudvault sync --limit 3            # importa desde la nube de Plaud
 python -m plaudvault.gui                       # interfaz web local (solo lectura)
 ```
 
+### Token de Plaud (para `sync` y `reclassify`)
+
+`sync` y `reclassify` hablan con la nube de Plaud usando **tu sesión de la web**:
+el mismo token *Bearer* que tu navegador envía en cada petición. Plaud no ofrece
+una API oficial ni claves de API, así que hay que copiarlo de ahí.
+
+> ⚠️ **El token da acceso completo a tu cuenta de Plaud** mientras no caduque.
+> No lo pegues en chats, issues ni capturas, no lo guardes en ficheros
+> (`config.yaml`, `.bashrc`, `.env`) y no lo compartas. PlaudVault no lo
+> escribe nunca en disco.
+
+**1. Extraerlo del navegador**
+
+1. Abre [web.plaud.ai](https://web.plaud.ai) e inicia sesión.
+2. Abre las herramientas de desarrollador: `F12` (o `Ctrl+Shift+I`; en macOS `Cmd+Opt+I`).
+3. Ve a la pestaña **Network** (Red).
+4. Recarga la página (`F5`) para que aparezcan las peticiones.
+5. En el filtro escribe `plaud.ai` y haz clic en cualquier petición a
+   `api.plaud.ai` o `api-euc1.plaud.ai` (por ejemplo `simple/web` o `detail`).
+6. En **Headers** → **Request Headers**, busca `authorization`. Su valor
+   empieza por `bearer eyJ…`.
+7. Clic derecho sobre esa línea → **Copy value** (Copiar valor).
+
+No sirve el `tokenstr` de *Local Storage* (no siempre existe, o es otro token).
+Da igual si copias el valor con `bearer ` delante, entre comillas o la línea
+entera `authorization: bearer …`: PlaudVault extrae el JWT de lo que pegues.
+
+**2. Aplicarlo en la terminal**
+
+En la terminal donde vas a lanzar `sync`, con el venv activado:
+
+```bash
+read -rs PLAUD_TOKEN && export PLAUD_TOKEN
+```
+
+Pega el token (`Ctrl+Shift+V`) y pulsa **Enter**. **No verás nada** al pegar:
+`-s` oculta lo que escribes, y `read` evita que el token quede en el historial
+de la shell (`~/.bash_history`), cosa que sí pasaría con `export PLAUD_TOKEN=…`.
+
+Comprueba que se cargó **sin mostrarlo**:
+
+```bash
+[ -n "$PLAUD_TOKEN" ] && echo "token cargado (${#PLAUD_TOKEN} caracteres)"
+```
+
+Debería decir unos 550 caracteres. Si sale `0` o nada, repite el paso.
+
+**3. Usarlo**
+
+```bash
+python -m plaudvault sync --limit 3   # prueba con 3 grabaciones
+python -m plaudvault sync             # todo el histórico (repetible: solo baja lo nuevo)
+```
+
+- El token vive **solo en esa terminal**: si la cierras, o abres otra, hay que
+  volver a cargarlo.
+- **Caduca en unas 24 h.** Si `sync` falla con `401 Unauthorized`, saca uno nuevo
+  (paso 1) y vuelve a cargarlo (paso 2).
+- Si dice `PLAUD_TOKEN no contiene un JWT`, copiaste otra cosa: el error describe
+  la forma de lo que pegaste (longitud, si empieza por `eyJ`), nunca su contenido.
+- Al terminar puedes borrarlo de la sesión con `unset PLAUD_TOKEN`.
+
 ## Interfaz gráfica (solo lectura)
 
 ```bash
@@ -94,12 +156,8 @@ Es idempotente (repetirlo solo baja lo nuevo) y cada carpeta se escribe de forma
 atómica. `--transcribe-missing` transcribe con whisper las grabaciones que Plaud
 no transcribió.
 
-Necesita tu token de sesión de web.plaud.ai en la variable `PLAUD_TOKEN`
-(DevTools → Network → cabecera `authorization` de cualquier petición a la API):
-
-```bash
-read -rs PLAUD_TOKEN && export PLAUD_TOKEN   # no queda en el historial
-```
+Necesita tu token de sesión de web.plaud.ai en la variable `PLAUD_TOKEN`: ver
+[Token de Plaud](#token-de-plaud-para-sync-y-reclassify) (cómo extraerlo y aplicarlo).
 
 ### Reordenar por carpetas de Plaud
 
