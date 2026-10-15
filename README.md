@@ -70,13 +70,13 @@ por Telegram.
 
 ## Instalación
 
-### Instalador Linux — v0.3.0-rc.1 (experimental)
+### Instalador Linux — v0.3.0
 
 Descarga el `.deb` y `SHA256SUMS` desde [Releases](https://github.com/D4vRAM369/PlaudVault/releases). Compatibilidad inicial: **Ubuntu 24.04 x86_64**. El paquete incluye Python, la CLI y la GUI Tauri: no necesitas clonar el repositorio, Node ni Rust. `apt` instala las bibliotecas del sistema declaradas (WebKitGTK, GTK, bubblewrap y GStreamer).
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0-rc.1_amd64.deb
+sudo apt install ./plaudvault_0.3.0_amd64.deb
 plaudvault init
 plaudvault desktop
 ```
@@ -94,12 +94,12 @@ Se conserva `-c` para elegir otra configuración. La primera transcripción de a
 
 ### Portable
 
-La misma release ofrece `PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz`. Incluye Python, pero requiere las bibliotecas del sistema; no es un AppImage ni un binario estático.
+La misma release ofrece `PlaudVault-0.3.0-linux-x86_64.tar.gz`. Incluye Python, pero requiere las bibliotecas del sistema; no es un AppImage ni un binario estático.
 
 ```bash
 sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0t64 bubblewrap gstreamer1.0-plugins-good gstreamer1.0-libav
-tar -xzf PlaudVault-0.3.0-rc.1-linux-x86_64.tar.gz
-cd PlaudVault-0.3.0-rc.1-linux-x86_64
+tar -xzf PlaudVault-0.3.0-linux-x86_64.tar.gz
+cd PlaudVault-0.3.0-linux-x86_64
 ./plaudvault init
 ./plaudvault desktop
 ```
@@ -243,7 +243,7 @@ cargo build --locked --manifest-path desktop/src-tauri/Cargo.toml
 python -m plaudvault.desktop
 ```
 
-La release candidata incluye instalador y backend Python empaquetado. Para compilar desde las fuentes, consulta la
+La release incluye instalador y backend Python empaquetado. Para compilar desde las fuentes, consulta la
 [guía de escritorio](desktop/README.md) para requisitos y opciones, y la
 [galería HTML](mockups/index.html) para las exploraciones visuales.
 
@@ -422,7 +422,7 @@ templates/           # plantillas CoSTAR (fase 1.5, aún no activas)
   export a Obsidian.
 - **2:** UI de escritorio. 🔄 Hecho el primer paso: GUI web local de solo lectura
   (`plaudvault.gui`) y primera versión experimental de Tauri v2 + Svelte 5
-  (`plaudvault.desktop`) sobre la misma API. Primera prerelease con `.deb` y portable para Ubuntu 24.04 x86_64;
+  (`plaudvault.desktop`) sobre la misma API. Primera release con `.deb` y portable para Ubuntu 24.04 x86_64;
   pendiente validación en más entornos. Bot de Telegram bidireccional pendiente.
 - **3:** ~~syncer con la API no oficial de Plaud~~ ✅ hecho (`sync`).
 

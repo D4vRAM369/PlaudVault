@@ -13,7 +13,9 @@ spec.loader.exec_module(module)
 def test_installer_layout():
     assert module.debian_version('0.3.0-rc.1') == '0.3.0~rc1'
     assert module.deb_filename('0.3.0-rc.1') == 'plaudvault_0.3.0-rc.1_amd64.deb'
-    for invalid in ('0.3.0', '../bad', '0.3.0-rc.1\n'):
+    assert module.debian_version('0.3.0') == '0.3.0'
+    assert module.deb_filename('0.3.0') == 'plaudvault_0.3.0_amd64.deb'
+    for invalid in ('0.3', '0.3.0-beta', '../bad', '0.3.0-rc.1\n'):
         try: module.debian_version(invalid)
         except ValueError: pass
         else: raise AssertionError(invalid)

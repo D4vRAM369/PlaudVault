@@ -17,10 +17,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def debian_version(version: str) -> str:
-    match = re.fullmatch(r'(\d+\.\d+\.\d+)-rc\.(\d+)', version)
+    match = re.fullmatch(r'(\d+\.\d+\.\d+)(?:-rc\.(\d+))?', version)
     if not match:
-        raise ValueError('La primera distribución admite versiones X.Y.Z-rc.N')
-    return f'{match[1]}~rc{match[2]}'
+        raise ValueError('Versiones admitidas: X.Y.Z o X.Y.Z-rc.N')
+    # «~» ordena la candidata antes que la estable en dpkg (0.3.0~rc1 < 0.3.0).
+    return f'{match[1]}~rc{match[2]}' if match[2] else match[1]
 
 
 def deb_filename(version: str) -> str:
