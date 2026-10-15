@@ -34,3 +34,4 @@ COMO_FUNCIONA.md
 
 # Instrucciones locales para Codex (equivalente a CLAUDE.md, no publicar)
 AGENTS.md
+.venv-build/
