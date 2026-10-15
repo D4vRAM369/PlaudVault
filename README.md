@@ -71,11 +71,21 @@ por Telegram.
 ## Instalación
 
 ```bash
-git clone <repo> && cd plaudvault
+git clone https://github.com/D4vRAM369/PlaudVault.git && cd PlaudVault
 python -m venv .venv && source .venv/bin/activate
-pip install -e .                      # instala el comando `plaudvault`
-pip install -e '.[gui]'               # opcional: interfaz web local
-cp config.example.yaml config.yaml   # ajusta rutas si quieres
+python -m pip install -e .            # instala el comando `plaudvault`
+python -m pip install -e '.[gui]'     # opcional: interfaz web local
+cp config.example.yaml config.yaml    # ajusta rutas si quieres
+```
+
+Usa `python -m pip` y no `pip` a secas: así instalas en el Python del venv
+aunque tengas otros Python en el sistema.
+
+Para ejecutar los tests (sin red ni credenciales; el de la GUI necesita `ffmpeg`):
+
+```bash
+python -m pip install -e '.[gui,test]'
+for t in tests/test_*.py; do python "$t"; done
 ```
 
 ## Uso
