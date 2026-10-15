@@ -35,7 +35,8 @@ python -m plaudvault.gui                       # interfaz web local (solo lectur
 ## Interfaz gráfica (solo lectura)
 
 ```bash
-python -m plaudvault.gui            # abre el navegador en 127.0.0.1:<puerto aleatorio>
+python -m plaudvault.gui            # abre una ventana de Chromium/Thorium efímera
+python -m plaudvault.gui --no-browser   # solo imprime la URL (sin garantía de cero rastro)
 ```
 
 - Navega por `archive/` (también tras `reclassify`): transcript, outline y
@@ -51,6 +52,27 @@ Seguridad del servidor local: solo escucha en `127.0.0.1`, la URL de arranque
 lleva un token de un solo uso que se cambia por una cookie de sesión, rechaza
 cabeceras `Host` ajenas (DNS rebinding), CSP estricta (las notas se renderizan
 sin HTML ni imágenes remotas) y bloqueo automático a los 15 min sin uso.
+
+**Cero rastro en disco.** Que el servidor no escriba el `.mp3` no basta: el
+navegador decide por su cuenta qué guarda (historial, autocompletado,
+contraseñas, cachés). Por eso la GUI:
+
+- abre un navegador de la familia Chromium (Thorium, Chromium, Chrome, Brave,
+  Edge) en modo app con un **perfil nuevo en RAM** (tmpfs, comprobado en
+  `/proc/mounts`) que se borra al cerrar la ventana;
+- comprueba en `/proc` que corre **en sandbox** (sin `--no-sandbox`, renderers
+  con seccomp) y si no, se niega a abrir;
+- le corta la red: solo puede hablar con `127.0.0.1`;
+- sirve el audio solo por peticiones Range y todo con `Cache-Control: no-store`,
+  sin datos personales en la URL, sin formularios y sin campo de contraseña
+  que el navegador quiera guardar.
+
+Se verificó con un experimento (Chromium, Thorium y Firefox; audios de 1,4 y
+36,5 MB) buscando trozos del audio descifrado en disco: cargar el audio como
+Blob lo deja en disco en los tres, y Firefox lo vuelca a `/tmp` incluso por
+Range. Por eso Firefox no está soportado. Sin un navegador Chromium o sin
+tmpfs (macOS, Windows), la GUI te avisa en vez de abrir tu navegador normal.
+Límite: si tu swap no está cifrado, la RAM puede acabar en disco.
 
 Para probarla sin tocar tu vault: `python tests/make_gui_fixture.py /tmp/pv-gui`
 y después `python -m plaudvault.gui -c /tmp/pv-gui/config.yaml` (passphrase `test`).
