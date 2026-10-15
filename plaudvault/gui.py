@@ -22,6 +22,7 @@ fetchall() (nunca un cursor vivo). Ver docs/SESION_3_GUI.md.
 from __future__ import annotations
 
 import argparse
+import mimetypes
 import os
 import re
 import secrets
@@ -37,11 +38,13 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from markdown_it import MarkdownIt
 
 from .config import Config, load_config
 from .crypto import WrongPassphrase, decrypt_bytes, unlock
+from .db import fts_query
 
 # ponytail: copia de sync.MARKER; importar sync arrastra requests (no está en .venv-gui).
 MARKER = ".plaud_id"
@@ -87,17 +90,17 @@ def docs_of(folder: Path) -> list[str]:
     return docs + sorted(f"notes/{p.name}" for p in (folder / "notes").glob("*.md"))
 
 
-def render(md_path: Path, archive: Path) -> str:
+def render(md_path: Path, archive: Path, text: str | None = None) -> str:
     """Markdown → HTML. Las imágenes locales se reescriben a /files/…; las
     remotas se sustituyen por texto (ni siquiera se piden: no filtran nada)."""
-    tokens = md.parse(md_path.read_text(encoding="utf-8"))
+    tokens = md.parse(md_path.read_text(encoding="utf-8") if text is None else text)
     for tok in tokens:
         for child in tok.children or []:
             if child.type != "image":
                 continue
             src = child.attrGet("src") or ""
             target = (md_path.parent / src).resolve()
-            if "://" not in src and target.is_relative_to(archive.resolve()) and target.is_file():
+            if text is None and "://" not in src and target.is_relative_to(archive.resolve()) and target.is_file():
                 child.attrSet("src", "/files/" + quote(target.relative_to(archive.resolve()).as_posix()))
             else:
                 child.type, child.children = "text", None
@@ -120,23 +123,17 @@ def db_query(db_path: Path, sql: str, params=()) -> list[sqlite3.Row]:
         conn.close()
 
 
-def fts_query(text: str) -> str:
-    """Texto libre → consulta FTS5 segura: cada palabra entre comillas (AND).
-    Sin esto, un `"` o un `-` del usuario es un error de sintaxis de FTS5."""
-    return " ".join('"' + w.replace('"', '""') + '"' for w in text.split())
-
-
 # ---------- audio: descifrado en RAM y Range ----------
 
 RANGE_RE = re.compile(r"bytes=(\d*)-(\d*)$")
 
 
-def range_response(data: bytes, header: str | None) -> Response:
+def range_response(data: bytes, header: str | None, media_type: str = "audio/mpeg") -> Response:
     """Range (206) para que <audio> pueda saltar sin descargarlo todo otra vez."""
     headers = {"Accept-Ranges": "bytes", "Cache-Control": "no-store"}
     m = RANGE_RE.match(header or "")
     if not m or (not m[1] and not m[2]):
-        return Response(data, media_type="audio/mpeg", headers=headers)
+        return Response(data, media_type=media_type, headers=headers)
     size = len(data)
     if m[1]:
         start, end = int(m[1]), min(int(m[2]) if m[2] else size - 1, size - 1)
@@ -145,7 +142,7 @@ def range_response(data: bytes, header: str | None) -> Response:
     if start > end or start >= size:
         return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
     headers["Content-Range"] = f"bytes {start}-{end}/{size}"
-    return Response(data[start:end + 1], status_code=206, media_type="audio/mpeg",
+    return Response(data[start:end + 1], status_code=206, media_type=media_type,
                     headers=headers)
 
 
@@ -170,15 +167,18 @@ class Vault:
         with self.lock:
             self.key = self.cached = None  # Python no garantiza borrar la RAM; soltamos la referencia
 
-    def audio(self, rec_key: str, folder: Path) -> bytes:
+    def audio(self, rec_key: str, folder: Path, audio_path: Path | None = None) -> bytes:
         with self.lock:
-            if self.key is None:
+            pv = audio_path or folder / "audio.pv"
+            encrypted = pv.suffix.lower() == ".pv" and pv.is_file()
+            if self.key is None and (self.cfg.crypto_enabled or encrypted):
                 raise HTTPException(401, "Vault bloqueado")
             self.last_use = time.monotonic()
             if self.cached and self.cached[0] == rec_key:
                 return self.cached[1]
-            pv = folder / "audio.pv"
-            if pv.is_file():
+            if audio_path is not None and pv.suffix.lower() != ".pv":
+                data = pv.read_bytes()
+            elif pv.is_file():
                 data = decrypt_bytes(self.key, pv.read_bytes())
             elif (folder / "audio.mp3").is_file():  # vault con crypto desactivado
                 data = (folder / "audio.mp3").read_bytes()
@@ -196,7 +196,8 @@ class Vault:
 
 # ---------- la app ----------
 
-def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAPI:
+def create_app(cfg: Config, login_token: str, allowed_hosts: set[str],
+               frontend_dir: Path | None = None) -> FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     archive = cfg.paths.archive
     vault = Vault(cfg)
@@ -220,6 +221,37 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
         resp.headers.setdefault("Cache-Control", "no-store")
         return resp
 
+    def local_recording(key: str):
+        if not re.fullmatch(r"local/[1-9][0-9]*", key):
+            raise HTTPException(404, "Grabación no encontrada")
+        rows = db_query(cfg.paths.db,
+                        "SELECT * FROM recordings WHERE id = ? AND plaud_file_id IS NULL",
+                        (int(key.split("/")[1]),))
+        if not rows or local_path(rows[0]) is None:
+            raise HTTPException(404, "Grabación no encontrada")
+        return rows[0]
+
+    def local_path(row):
+        # Texto y audio sin crypto no guardan encrypted_path en Pipeline.
+        filename = row["filename"]
+        if Path(filename).name != filename or filename in {".", ".."}:
+            return None
+        path = (Path(row["encrypted_path"]) if row["encrypted_path"] else
+                archive / f'{row["id"]:06d}_{filename}')
+        target = path.resolve()
+        root = archive.resolve()
+        if (not target.is_relative_to(root) or not target.is_file()
+                or any(part.endswith(".partial") for part in path.parts)
+                or any(part.endswith(".partial") for part in target.relative_to(root).parts)):
+            return None
+        return target
+
+    def local_transcript(row):
+        rows = db_query(cfg.paths.db,
+                        "SELECT content FROM transcripts WHERE recording_id = ? ORDER BY id LIMIT 1",
+                        (row["id"],))
+        return rows[0]["content"] if rows else None
+
     @app.get("/login")
     def login(t: str = ""):
         if not pending["token"] or not secrets.compare_digest(t, pending["token"]):
@@ -233,7 +265,10 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
 
     @app.get("/")
     def index():
-        return FileResponse(STATIC / "index.html")
+        return FileResponse((frontend_dir or STATIC) / "index.html")
+
+    if frontend_dir is not None:
+        app.mount("/desktop", StaticFiles(directory=frontend_dir), name="desktop")
 
     @app.get("/static/{name}")
     def static(name: str):
@@ -245,26 +280,43 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
     @app.get("/api/recordings")
     def recordings():
         found = scan(archive)
-        indexed = {r[0] for r in db_query(
-            cfg.paths.db, "SELECT plaud_file_id FROM recordings WHERE plaud_file_id IS NOT NULL")}
+        rows = db_query(cfg.paths.db, "SELECT * FROM recordings")
+        indexed = {r["plaud_file_id"]: r for r in rows if r["plaud_file_id"] is not None}
         out = []
         for key, folder in found.items():
             fid = (folder / MARKER).read_text().strip()
             group, _, title = key.rpartition("/")
             out.append({"key": key, "group": group, "title": title,
-                        "indexed": fid in indexed})
-        # Más recientes primero: el nombre empieza por YYYY-MM-DD_HHMM.
-        out.sort(key=lambda r: r["title"], reverse=True)
-        return {"recordings": out, "locked": vault.key is None}
+                        "indexed": fid in indexed, "source": "plaud",
+                        "duration_secs": indexed[fid]["duration_secs"] if fid in indexed else None,
+                        "ingested_at": indexed[fid]["ingested_at"] if fid in indexed else None})
+        for row in rows:
+            if row["plaud_file_id"] is None and local_path(row) is not None:
+                out.append({"key": f'local/{row["id"]}', "group": "Local",
+                            "title": row["filename"], "indexed": True, "source": "local",
+                            "duration_secs": row["duration_secs"], "ingested_at": row["ingested_at"]})
+        out.sort(key=lambda r: (r["ingested_at"] or "", r["title"]), reverse=True)
+        return {"recordings": out, "locked": cfg.crypto_enabled and vault.key is None,
+                "crypto_enabled": cfg.crypto_enabled}
 
     @app.get("/api/rec/{key:path}")
     def recording(key: str):
+        if key.startswith("local/"):
+            row = local_recording(key)
+            return {"key": key, "docs": ["transcript.md"] if local_transcript(row) is not None else [],
+                    "has_audio": row["source_type"] == "audio"}
         folder = safe_folder(archive, key)
         return {"key": key, "docs": docs_of(folder),
                 "has_audio": (folder / "audio.pv").is_file() or (folder / "audio.mp3").is_file()}
 
     @app.get("/api/doc/{key:path}")
     def doc(key: str, name: str):
+        if key.startswith("local/"):
+            row = local_recording(key)
+            text = local_transcript(row)
+            if name != "transcript.md" or text is None:
+                raise HTTPException(404, "Documento no encontrado")
+            return {"html": render(archive / "transcript.md", archive, text=text)}
         folder = safe_folder(archive, key)
         if name not in docs_of(folder):  # lista blanca: nada de rutas libres
             raise HTTPException(404, "Documento no encontrado")
@@ -285,7 +337,7 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
         if not q.strip():
             return {"results": []}
         rows = db_query(cfg.paths.db, """
-            SELECT r.plaud_file_id AS fid, r.filename, t.model,
+            SELECT r.id, r.plaud_file_id AS fid, r.filename, t.model,
                    snippet(transcripts_fts, 0, char(2), char(3), ' … ', 14) AS frag
             FROM transcripts_fts
             JOIN transcripts t ON t.id = transcripts_fts.rowid
@@ -293,10 +345,14 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
             WHERE transcripts_fts MATCH ? ORDER BY rank LIMIT ?""",
             (fts_query(q), min(limit, 100)))
         by_fid = {(f / MARKER).read_text().strip(): k for k, f in scan(archive).items()}
+        local_keys = {r["id"]: f'local/{r["id"]}' for r in
+                      db_query(cfg.paths.db, "SELECT * FROM recordings WHERE plaud_file_id IS NULL")
+                      if local_path(r) is not None}
         # El fragmento va con marcadores \x02 \x03: el frontend los convierte en
         # <mark> con textContent, así el texto de la nota nunca se interpreta como HTML.
-        return {"results": [{"key": by_fid.get(r["fid"]), "filename": r["filename"],
-                             "kind": r["model"], "frag": r["frag"]} for r in rows]}
+        return {"results": [{"key": by_fid.get(r["fid"]) if r["fid"] is not None else local_keys.get(r["id"]), "filename": r["filename"],
+                             "kind": r["model"], "frag": r["frag"]} for r in rows
+                            if r["fid"] is not None or r["id"] in local_keys]}
 
     @app.post("/api/unlock")
     def unlock_vault(body: dict):
@@ -314,6 +370,16 @@ def create_app(cfg: Config, login_token: str, allowed_hosts: set[str]) -> FastAP
 
     @app.get("/api/audio/{key:path}")
     def audio(key: str, request: Request):
+        if key.startswith("local/"):
+            row = local_recording(key)
+            if row["source_type"] != "audio":
+                raise HTTPException(404, "Esta grabación no tiene audio")
+            path = local_path(row)
+            media_type = ({".wav": "audio/wav", ".flac": "audio/flac", ".m4a": "audio/mp4",
+                           ".ogg": "audio/ogg", ".opus": "audio/ogg", ".mp3": "audio/mpeg"}
+                          .get(Path(row["filename"]).suffix.lower())
+                          or mimetypes.guess_type(row["filename"])[0] or "application/octet-stream")
+            return range_response(vault.audio(key, archive, path), request.headers.get("range"), media_type)
         folder = safe_folder(archive, key)
         return range_response(vault.audio(key, folder), request.headers.get("range"))
 
