@@ -74,13 +74,13 @@ sent when it finishes.
 
 ## Installation
 
-### Linux installer — v0.3.0
+### Linux installer — v0.3.1
 
 Download the `.deb` and `SHA256SUMS` from [Releases](https://github.com/D4vRAM369/PlaudVault/releases). Initial compatibility: **Ubuntu 24.04 x86_64**. The package includes Python, the CLI and the Tauri GUI: you don't need to clone the repository, Node or Rust. `apt` installs the declared system libraries (WebKitGTK, GTK, bubblewrap and GStreamer).
 
 ```bash
 sha256sum --ignore-missing --check SHA256SUMS
-sudo apt install ./plaudvault_0.3.0_amd64.deb
+sudo apt install ./plaudvault_0.3.1_amd64.deb
 plaudvault init
 plaudvault desktop
 ```
@@ -98,12 +98,12 @@ cp /usr/share/doc/plaudvault/config.example.yaml ~/.config/plaudvault/config.yam
 
 ### Portable
 
-The same release ships `PlaudVault-0.3.0-linux-x86_64.tar.gz`. It includes Python, but needs the system libraries; it is not an AppImage or a static binary.
+The same release ships `PlaudVault-0.3.1-linux-x86_64.tar.gz`. It includes Python, but needs the system libraries; it is not an AppImage or a static binary.
 
 ```bash
 sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0t64 bubblewrap gstreamer1.0-plugins-good gstreamer1.0-libav
-tar -xzf PlaudVault-0.3.0-linux-x86_64.tar.gz
-cd PlaudVault-0.3.0-linux-x86_64
+tar -xzf PlaudVault-0.3.1-linux-x86_64.tar.gz
+cd PlaudVault-0.3.1-linux-x86_64
 ./plaudvault init
 ./plaudvault desktop
 ```

@@ -35,7 +35,7 @@ Si usas otro directorio de compilación, pasa `--binary /ruta/al/binario/plaudva
 
 El lanzador conserva el backend de solo lectura en `127.0.0.1`, verifica tmpfs y el sandbox del renderer en `/proc`, y entrega el enlace de sesión al binario por stdin. El token no se pasa como argumento ni se imprime. El proceso web recibe HOME, XDG y temporales en RAM; no hereda tokens del entorno. La ventana comienza con un bootstrap vacío y solo recibe la sesión del vault después de verificar el renderer. Al cerrar se termina el servidor y se elimina el perfil efímero.
 
-La release v0.3.0 incluye instalador `.deb` y portable con Python para Ubuntu 24.04 x86_64. Esta sección describe la compilación desde fuentes; para instalar sin compilar, consulta [packaging/README.md](../packaging/README.md).
+La release v0.3.1 incluye instalador `.deb` y portable con Python para Ubuntu 24.04 x86_64. Esta sección describe la compilación desde fuentes; para instalar sin compilar, consulta [packaging/README.md](../packaging/README.md).
 
 ## Verificación
 
