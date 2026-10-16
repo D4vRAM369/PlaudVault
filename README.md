@@ -427,8 +427,13 @@ templates/           # plantillas CoSTAR (fase 1.5, aún no activas)
 ## Roadmap
 
 - **MVP (esto):** ingesta, transcripción, cifrado, búsqueda, Telegram saliente.
-- **1.5:** enriquecimiento LLM con plantillas CoSTAR (Anthropic/Ollama),
-  export a Obsidian.
+- **1.5:** enriquecimiento LLM con plantillas CoSTAR (Anthropic/Ollama).
+- **Obsidian (posible integración futura, sin fecha):** exportar cada grabación
+  como nota Markdown con frontmatter (fecha, duración, carpeta de Plaud) y
+  wikilinks entre transcripción, resumen y notas, para abrirlas en un vault de
+  Obsidian. Las carpetas de `archive/` ya son Markdown, así que el formato está
+  cerca. El audio seguiría cifrado; el texto exportado queda en claro allí donde
+  lo guardes (ojo con Obsidian Sync u otras nubes).
 - **2:** UI de escritorio. 🔄 Hecho el primer paso: GUI web local de solo lectura
   (`plaudvault.gui`) y primera versión experimental de Tauri v2 + Svelte 5
   (`plaudvault.desktop`) sobre la misma API. Primera release con `.deb` y portable para Ubuntu 24.04 x86_64;
