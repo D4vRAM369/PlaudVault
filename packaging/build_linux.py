@@ -59,7 +59,10 @@ def stage_debian(bundle: Path, stage: Path, version: str, project: Path) -> None
         '[Desktop Entry]\nType=Application\nName=PlaudVault\n'
         'Comment=Bóveda local de grabaciones de voz\n'
         'Exec=/usr/bin/plaudvault desktop\nIcon=plaudvault\n'
-        'Terminal=false\nCategories=AudioVideo;Audio;\nStartupNotify=true\n')
+        'Terminal=false\nCategories=AudioVideo;Audio;\nStartupNotify=true\n'
+        # La ventana nativa se llama como su binario; sin esto el panel y Alt+Tab
+        # no la asocian a esta entrada y muestran un icono genérico.
+        'StartupWMClass=plaudvault-desktop\n')
     icon = stage / 'usr/share/icons/hicolor/512x512/apps'
     icon.mkdir(parents=True)
     shutil.copy2(project / 'assets/icon.png', icon / 'plaudvault.png')
