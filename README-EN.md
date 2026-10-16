@@ -326,6 +326,11 @@ Set `telegram.enabled: true` in config.yaml and export
 - The **audio** is encrypted; transcripts, notes and infographics stay in plain
   text so FTS5 can index them. It protects against disk theft, not against
   active malware in your session.
+- **Metadata** also stays in plain text: date, time and title in folder names
+  (`archive/<Folder>/MM-YY/YYYY-MM-DD_HHMM_<name>/`), and duration, Plaud
+  folder and hashes in `vault.db`. To cover them, keep `~/PlaudVault` on
+  full-disk encryption (LUKS) or inside a VeraCrypt container. `sync` deletes
+  nothing from the Plaud cloud.
 - Without the passphrase there is no possible recovery. There is no backdoor.
 
 </details>

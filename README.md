@@ -325,6 +325,11 @@ Pon `telegram.enabled: true` en config.yaml y exporta
 - Se cifra el **audio**; transcripciones, notas e infografías quedan en claro para que FTS5
   pueda indexarlas. Protege contra robo del disco, no contra malware
   activo en tu sesión.
+- Los **metadatos** también quedan en claro: fecha, hora y título en los nombres
+  de carpeta (`archive/<Carpeta>/MM-YY/YYYY-MM-DD_HHMM_<nombre>/`), y duración,
+  carpeta de Plaud y huellas en `vault.db`. Para cubrirlos, guarda
+  `~/PlaudVault` sobre cifrado de disco completo (LUKS) o un contenedor
+  VeraCrypt. `sync` no borra nada de la nube de Plaud.
 - Sin passphrase no hay recuperación posible. No hay puerta trasera.
 
 </details>
