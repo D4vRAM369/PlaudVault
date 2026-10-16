@@ -30,7 +30,12 @@ def test_installer_layout():
         assert link.is_symlink() and link.resolve()==stage/'usr/lib/plaudvault/plaudvault'
         desktop=(stage/'usr/share/applications/plaudvault.desktop').read_text()
         assert 'Exec=/usr/bin/plaudvault desktop' in desktop
-        assert 'plaudvault-desktop' not in desktop
+        assert 'plaudvault-desktop' not in desktop.replace('StartupWMClass=plaudvault-desktop', '')
+        assert 'StartupWMClass=plaudvault-desktop\n' in desktop
+        # Icono de ventana (Alt+Tab): PNG RGBA (tipo de color 6) y no el provisional de 32 px.
+        header = (ROOT / 'desktop/src-tauri/icons/icon.png').read_bytes()[:26]
+        assert header[12:16] == b'IHDR' and header[25] == 6
+        assert int.from_bytes(header[16:20], 'big') >= 128
         control=(stage/'DEBIAN/control').read_text()
         assert 'Version: 0.3.0~rc1' in control and 'Architecture: amd64' in control
         assert 'bubblewrap' in control and 'libwebkit2gtk-4.1-0' in control
