@@ -49,6 +49,11 @@ jobs:
               raise SystemExit('Only X.Y.Z or X.Y.Z-rc.N versions are supported')
           if os.environ['EVENT_NAME'] == 'push' and os.environ['REF_NAME'] != f'v{version}':
               raise SystemExit('Tag must match the configured version exactly')
+          # Se publican tal cual desde el commit del tag: v0.3.1 salió con las de la 0.3.0.
+          # Se comprueba también en PRs para que el fallo llegue antes de etiquetar.
+          notes = pathlib.Path('packaging/RELEASE_NOTES.md').read_text()
+          if not re.search(rf'\bv{re.escape(version)}(?![\w-]|\.\d)', notes):
+              raise SystemExit(f'packaging/RELEASE_NOTES.md must mention v{version}')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'version={version}\n')
           PY
